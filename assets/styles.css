@@ -1,0 +1,809 @@
+/* =============================================================================
+   PLATAFORMA INTELIGENCIA DE NEGOCIO - RC DEPORTIVO
+   ============================================================================= */
+
+/* Variables */
+:root {
+    --primary-blue: #1a3a5c;
+    --dark-blue: #0d2137;
+    --accent-blue: #2c5282;
+    --light-blue: #4a7ab0;
+    --white: #ffffff;
+    --light-gray: #f5f5f5;
+    --text-gray: #666666;
+    --sidebar-width: 220px;
+    --success-green: #2ecc71;
+    --danger-red: #e74c3c;
+    --warning-orange: #f39c12;
+}
+
+/* Fuente Montserrat */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* Reset y base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--light-gray);
+    min-height: 100vh;
+}
+
+/* =============================================================================
+   LAYOUT PRINCIPAL
+   ============================================================================= */
+
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* =============================================================================
+   SIDEBAR
+   ============================================================================= */
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+}
+
+.sidebar-header {
+    padding: 20px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--white);
+    margin: 0;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 10px 0;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.nav-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    mix-blend-mode: screen;
+    flex-shrink: 0;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: var(--white);
+    border-left-color: var(--light-blue);
+}
+
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.25);
+    color: var(--white);
+    border-left-color: #f0a500;
+    font-weight: 600;
+}
+
+.sidebar-footer {
+    padding: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.user-info {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 10px;
+}
+
+.btn-logout {
+    width: 100%;
+    padding: 8px 15px;
+    background-color: #c0392b;
+    color: var(--white);
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-logout:hover {
+    background-color: #a93226;
+}
+
+/* =============================================================================
+   CONTENIDO PRINCIPAL
+   ============================================================================= */
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100vw - var(--sidebar-width));
+    margin-left: var(--sidebar-width);
+    background-image: 
+        linear-gradient(rgba(26, 58, 92, 0.85), rgba(13, 33, 55, 0.9)),
+        url('/assets/background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 20px 30px;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+/* =============================================================================
+   HEADER
+   ============================================================================= */
+
+.main-header {
+    margin-bottom: 25px;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-logo {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+}
+
+.header-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--white);
+    margin: 0;
+}
+
+.header-subtitle {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 5px 0 0 0;
+}
+
+/* =============================================================================
+   TARJETAS
+   ============================================================================= */
+
+.cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cards-row {
+    display: flex;
+    gap: 20px;
+}
+
+.content-card {
+    flex: 1;
+    background-color: var(--white);
+    border-radius: 8px;
+    padding: 20px 25px;
+    position: relative;
+    overflow: hidden;
+    min-height: 180px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.content-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-header-section {
+    margin-bottom: 10px;
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin: 0;
+}
+
+.card-body {
+    position: relative;
+    z-index: 1;
+}
+
+.card-description {
+    font-size: 0.85rem;
+    color: var(--text-gray);
+    margin-bottom: 15px;
+}
+
+.card-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.card-list li {
+    padding: 6px 0;
+    font-size: 0.9rem;
+    color: var(--accent-blue);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.card-list li:hover {
+    color: var(--primary-blue);
+    text-decoration: underline;
+}
+
+.card-icon {
+    position: absolute;
+    right: 15px;
+    bottom: 15px;
+    opacity: 0.15;
+}
+
+.card-image {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+}
+
+/* =============================================================================
+   SUBMENÚ
+   ============================================================================= */
+
+.nav-link-parent {
+    cursor: pointer;
+}
+
+.nav-link-parent::after {
+    content: '▼';
+    float: right;
+    font-size: 0.7rem;
+    margin-right: 5px;
+    transition: transform 0.3s ease;
+}
+
+.submenu {
+    display: none;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding-left: 15px;
+}
+
+.nav-link-sub {
+    display: block;
+    padding: 10px 20px;
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    border-left: 2px solid transparent;
+}
+
+.nav-link-sub:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--white);
+    border-left-color: var(--light-blue);
+}
+
+/* =============================================================================
+   NAVEGACIÓN HORIZONTAL (TABS DE SECCIÓN)
+   ============================================================================= */
+
+.section-header {
+    background-color: var(--white);
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.section-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.section-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 8px 10px;
+    background-color: var(--light-gray);
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    color: var(--text-gray);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.section-tab:hover {
+    background-color: var(--primary-blue);
+    color: var(--white);
+    border-color: var(--primary-blue);
+}
+
+.section-tab.active {
+    background-color: var(--primary-blue);
+    color: var(--white);
+    border-color: var(--primary-blue);
+    font-weight: 700;
+}
+
+.section-tab .tab-subtitle {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+/* Contenedor unificado para contenido de página */
+.page-content-container {
+    background-color: var(--white);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* =============================================================================
+   PÁGINAS DE CONTENIDO
+   ============================================================================= */
+
+.page-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 3px;
+}
+
+.page-subtitle {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 10px;
+}
+
+/* Filtros */
+.filters-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    min-width: 200px;
+}
+
+.filter-item label {
+    display: block;
+    color: var(--white);
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+}
+
+/* KPIs */
+.kpis-container {
+    margin-bottom: 10px;
+}
+
+.kpis-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.kpi-card {
+    background-color: var(--light-gray);
+    border-radius: 6px;
+    padding: 6px 12px 4px;
+    min-width: 120px;
+    flex: 1;
+    text-align: center;
+    border: 1px solid #e0e0e0;
+}
+
+.kpi-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+
+.kpi-value-positive {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--success-green);
+}
+
+.kpi-value-negative {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--danger-red);
+}
+
+.kpi-pct-diff {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.kpi-pct-diff.kpi-value-positive {
+    font-size: 0.9rem;
+    color: var(--success-green);
+}
+
+.kpi-pct-diff.kpi-value-negative {
+    font-size: 0.9rem;
+    color: var(--danger-red);
+}
+
+.kpi-previous {
+    font-size: 0.7rem;
+    color: var(--text-gray);
+    margin-top: 2px;
+    font-style: italic;
+}
+
+.kpi-label {
+    font-size: 0.7rem;
+    color: var(--text-gray);
+    margin-top: 3px;
+    font-weight: 500;
+}
+
+.kpi-label-top {
+    font-size: 1.4rem;
+    color: var(--primary-blue);
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+/* Gráficas */
+.graphs-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.graphs-row {
+    display: flex;
+    gap: 5px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.graph-card {
+    flex: 1;
+    min-width: 0;
+    background-color: transparent;
+    border-radius: 6px;
+    padding: 6px 12px;
+    max-height: 380px;
+    overflow: hidden;
+}
+
+.graph-card.full-width {
+    flex: 1 1 100%;
+    max-height: 420px;
+    background-color: transparent;
+}
+
+.graph-card.small {
+    max-height: 280px;
+}
+
+.graph-card h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin-bottom: 0px;
+    text-align: center;
+}
+
+.graph-card .js-plotly-plot {
+    max-height: 380px !important;
+}
+
+/* Loading Spinner */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    width: 100%;
+    background-color: var(--white);
+    border-radius: 8px;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+    margin-top: 15px;
+    font-size: 1rem;
+    color: var(--text-gray);
+    font-weight: 500;
+}
+
+/* Placeholder */
+.placeholder-container {
+    background-color: var(--white);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+}
+
+.placeholder-text {
+    color: var(--text-gray);
+    font-size: 1rem;
+}
+
+/* =============================================================================
+   RESPONSIVE
+   ============================================================================= */
+
+/* =============================================================================
+   HOME CARDS
+   ============================================================================= */
+
+.home-card-link {
+    flex: 1;
+    text-decoration: none;
+    color: inherit;
+}
+
+.home-card {
+    background-color: var(--white);
+    border-radius: 8px;
+    padding: 30px 25px;
+    min-height: 180px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.home-card:hover {
+    background-color: rgba(26, 58, 92, 0.08);
+    border-left-color: var(--light-blue);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.home-card-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin: 0 0 14px 0;
+}
+
+.home-card-subtitle {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #666;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.home-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* =============================================================================
+   LOGIN PAGE
+   ============================================================================= */
+
+.login-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image:
+        linear-gradient(rgba(26, 58, 92, 0.80), rgba(13, 33, 55, 0.85)),
+        url('/assets/login.jpg');
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.login-box {
+    background-color: var(--white);
+    border-radius: 12px;
+    padding: 40px 40px 35px;
+    width: 360px;
+    max-width: 90vw;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-shield {
+    width: 70px;
+    height: auto;
+    margin-bottom: 18px;
+}
+
+.login-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    margin: 0 0 25px 0;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.login-input {
+    width: 100%;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: 'Montserrat', sans-serif;
+    color: #333;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.login-input:focus {
+    border-color: var(--primary-blue);
+}
+
+.login-error {
+    color: #e74c3c;
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-bottom: 10px;
+    min-height: 20px;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 11px;
+    background-color: var(--accent-blue);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: 'Montserrat', sans-serif;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-btn:hover {
+    background-color: var(--primary-blue);
+}
+
+/* =============================================================================
+   RESPONSIVE
+   ============================================================================= */
+
+@media (max-width: 992px) {
+    .cards-row, .graphs-row {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 180px;
+    }
+    
+    .main-content {
+        margin-left: 180px;
+        max-width: calc(100vw - 180px);
+    }
+    
+    .kpis-row {
+        flex-wrap: wrap;
+    }
+    
+    .kpi-card {
+        min-width: 120px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        max-width: 100vw;
+    }
+    
+    .app-container {
+        flex-direction: column;
+    }
+}
+
