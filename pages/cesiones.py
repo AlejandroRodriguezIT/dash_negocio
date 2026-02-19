@@ -415,10 +415,10 @@ def update_graphs(_):
         hovertemplate='<b>Rivales:</b><br>%{customdata}<extra></extra>',
         customdata=hover_dia
     ))
-    max_y_dia = df_partido_dia['promedio_vendidas'].max() * 1.15
+    max_y_dia = df_partido_dia['promedio_vendidas'].max() * 1.25
     fig2.update_layout(
-        height=80,
-        margin=dict(t=20, b=20, l=20, r=20),
+        height=200,
+        margin=dict(t=30, b=30, l=20, r=20),
         xaxis=dict(type='category', tickfont=dict(size=10, family='Montserrat', weight='bold')),
         yaxis=dict(showticklabels=False, range=[0, max_y_dia])
     )
@@ -444,10 +444,10 @@ def update_graphs(_):
         hovertemplate='<b>Rivales:</b><br>%{customdata}<extra></extra>',
         customdata=hover_hora
     ))
-    max_y_hora = df_hora_agg['promedio_vendidas'].max() * 1.15
+    max_y_hora = df_hora_agg['promedio_vendidas'].max() * 1.25
     fig3.update_layout(
-        height=80,
-        margin=dict(t=20, b=20, l=20, r=20),
+        height=200,
+        margin=dict(t=30, b=30, l=20, r=20),
         xaxis=dict(tickfont=dict(size=10, family='Montserrat', weight='bold')),
         yaxis=dict(showticklabels=False, range=[0, max_y_hora])
     )

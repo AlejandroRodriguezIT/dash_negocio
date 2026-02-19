@@ -392,7 +392,8 @@ def build_fig_metodo_pago(df_metodo_actual, df_actual):
             text=texts,
             textposition='inside',
             insidetextanchor='middle',
-            textfont=dict(color='white', size=10, family='Montserrat', weight='bold'),
+            textangle=0,
+            textfont=dict(color='white', size=9, family='Montserrat', weight='bold'),
             hovertemplate=(
                 f'<b>{metodo_labels.get(metodo, metodo)}:</b> '
                 + '%{customdata[0]}€ (%{customdata[1]}%)<extra></extra>'

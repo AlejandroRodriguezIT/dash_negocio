@@ -183,10 +183,10 @@ def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_ante
     return html.Div([
         html.Div("Abonados por Partido (% del total)", className="kpi-label-top"),
         html.Div([
-            html.Span(format_with_dots(promedio_actual), className=f"kpi-value {color_class}"),
-            html.Span(f" ({pct_actual:.1f}%)", style={"fontSize": "0.85rem", "fontWeight": "600", "color": color_css}),
-            html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}")
-        ], style={"display": "flex", "alignItems": "baseline", "justifyContent": "center", "gap": "4px"}),
+            html.Span(format_with_dots(promedio_actual), className=f"kpi-value {color_class}", style={"fontSize": "1.15rem"}),
+            html.Span(f" ({pct_actual:.1f}%)", style={"fontSize": "0.75rem", "fontWeight": "600", "color": color_css}),
+            html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}", style={"fontSize": "0.75rem"})
+        ], style={"display": "flex", "alignItems": "baseline", "justifyContent": "center", "gap": "3px", "flexWrap": "nowrap"}),
         html.Div(f"Temp. 24/25: {format_with_dots(promedio_anterior)} ({pct_anterior:.1f}%)", className="kpi-previous"),
     ], className="kpi-card")
 
@@ -432,8 +432,8 @@ def update_page(_):
         
         max_y = max(abonados_consecutivos) * 1.2 if abonados_consecutivos else 100
         fig2.update_layout(
-            height=400,
-            margin=dict(b=50, t=10, l=40, r=20),
+            height=450,
+            margin=dict(b=70, t=10, l=40, r=20),
             images=escudos_images_f2,
             shapes=result_shapes_f2,
             xaxis=dict(
