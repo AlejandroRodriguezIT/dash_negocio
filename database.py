@@ -3,16 +3,15 @@ Conexión a la base de datos MySQL
 ==================================
 """
 
-import os
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-# Configuración MySQL — usa variables de entorno en producción
+# Configuración MySQL
 MYSQL_CONFIG = {
-    "user": os.environ.get("MYSQL_USER", "alen_depor"),
-    "password": os.environ.get("MYSQL_PASSWORD", ""),
-    "host": os.environ.get("MYSQL_HOST", "82.165.192.201"),
-    "database": os.environ.get("MYSQL_DATABASE", "Dash_Negocio")
+    "user": "alen_depor",
+    "password": "ik3QJOq6n",
+    "host": "82.165.192.201",
+    "database": "Dash_Negocio"
 }
 
 MYSQL_URL = f"mysql+pymysql://{MYSQL_CONFIG['user']}:{MYSQL_CONFIG['password']}@{MYSQL_CONFIG['host']}/{MYSQL_CONFIG['database']}"
@@ -273,6 +272,36 @@ def get_pre_asistencia_partido():
 def get_pre_asistencia_edad():
     """Distribución por edad pre-calculada."""
     return query_to_df("SELECT * FROM pre_asistencia_edad")
+
+
+def get_pre_deportiendas_kpis():
+    """KPIs pre-calculados de DéporTiendas."""
+    return query_to_df("SELECT * FROM pre_deportiendas_kpis")
+
+
+def get_pre_deportiendas_matchday():
+    """Ventas matchday Riazor pre-calculadas (actual + anterior)."""
+    return query_to_df("SELECT * FROM pre_deportiendas_matchday ORDER BY temporada, fecha")
+
+
+def get_pre_deportiendas_por_tienda():
+    """Facturación por tienda pre-calculada."""
+    return query_to_df("SELECT * FROM pre_deportiendas_por_tienda ORDER BY total_sales DESC")
+
+
+def get_pre_deportiendas_top_productos():
+    """Top 10 productos por unidades vendidas."""
+    return query_to_df("SELECT * FROM pre_deportiendas_top_productos ORDER BY uds_vendidas DESC")
+
+
+def get_pre_deportiendas_producto_tienda():
+    """Cruce producto-tienda pre-calculado."""
+    return query_to_df("SELECT * FROM pre_deportiendas_producto_tienda ORDER BY uds_vendidas DESC")
+
+
+def get_pre_deportiendas_canal():
+    """Ventas por canal (online vs física)."""
+    return query_to_df("SELECT * FROM pre_deportiendas_canal")
 
 
 def get_partidos_local(temporada: str = '2025'):

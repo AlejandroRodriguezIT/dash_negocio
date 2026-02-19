@@ -7,7 +7,8 @@ import dash
 from dash import html, dcc, callback, Output, Input
 import pandas as pd
 from database import (
-    get_pre_entradas_partido, get_pre_hosteleria_partido
+    get_pre_entradas_partido, get_pre_hosteleria_partido,
+    get_pre_deportiendas_kpis,
 )
 
 dash.register_page(__name__, path="/", name="Inicio")
@@ -60,10 +61,19 @@ def _load_home_data():
     except Exception:
         rec_hosteleria = 0
 
-    return rec_estadio, rec_hosteleria
+    try:
+        df_dt = get_pre_deportiendas_kpis()
+        if not df_dt.empty:
+            rec_tiendas = df_dt.iloc[0]['recaudacion_total']
+        else:
+            rec_tiendas = 0
+    except Exception:
+        rec_tiendas = 0
+
+    return rec_estadio, rec_hosteleria, rec_tiendas
 
 
-rec_estadio, rec_hosteleria = _load_home_data()
+rec_estadio, rec_hosteleria, rec_tiendas = _load_home_data()
 
 layout = html.Div(
     className="cards-container",
@@ -94,9 +104,9 @@ layout = html.Div(
             children=[
                 create_recaudacion_card(
                     "DÉPOR TIENDAS",
-                    "EN DESARROLLO",
-                    color="#999",
-                    is_active=False,
+                    f"{fmt(rec_tiendas)}€",
+                    color="#18395c",
+                    is_active=True,
                     href="/deportiendas",
                 ),
                 create_recaudacion_card(
