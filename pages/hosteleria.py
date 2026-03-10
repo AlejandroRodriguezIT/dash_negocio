@@ -689,6 +689,8 @@ def build_fig_comestibles(df_producto, hora_filter=None, n_partidos=1, df_prod_c
 
 def build_fig_recaudacion_media_hora(df_actual):
     """Gráfica GLOBAL: recaudación media por hora de inicio."""
+    rivals_map = df_actual.groupby('hora_exacta')['t2_name'].apply(list).to_dict()
+
     agg = df_actual.groupby('hora_exacta').agg(
         recaudacion_media=('recaudacion_total', 'mean'),
         n_partidos=('id_partido', 'nunique'),
@@ -698,6 +700,12 @@ def build_fig_recaudacion_media_hora(df_actual):
 
     colores = ['#f39c12' if v == agg['recaudacion_media'].max() else '#18395c' for v in agg['recaudacion_media']]
 
+    hover_texts = [
+        f"<b>Hora: {h}</b><br>Recaudación media: {fmt(r)}€<br>"
+        f"Partidos: {int(n)} ({', '.join(rivals_map.get(h, []))})"
+        for h, r, n in zip(agg['hora_exacta'], agg['recaudacion_media'], agg['n_partidos'])
+    ]
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=agg['hora_exacta'],
@@ -706,13 +714,8 @@ def build_fig_recaudacion_media_hora(df_actual):
         text=[fmt(v) + '€' for v in agg['recaudacion_media']],
         textposition='outside',
         textfont=dict(color='#333', size=11, family='Montserrat', weight='bold'),
-        hovertemplate=(
-            '<b>Hora: %{x}</b><br>'
-            'Recaudación media: %{y:,.0f}€<br>'
-            'Partidos: %{customdata}'
-            '<extra></extra>'
-        ),
-        customdata=[str(int(v)) for v in agg['n_partidos']],
+        hovertext=hover_texts,
+        hoverinfo='text',
     ))
     max_y = agg['recaudacion_media'].max() * 1.15 if len(agg) > 0 else 100
     fig.update_layout(
@@ -726,12 +729,20 @@ def build_fig_recaudacion_media_hora(df_actual):
 
 def build_fig_ticket_medio_hora(df_actual):
     """Gráfica GLOBAL: ticket medio por hora de inicio."""
+    rivals_map = df_actual.groupby('hora_exacta')['t2_name'].apply(list).to_dict()
+
     agg = df_actual.groupby('hora_exacta').agg(
         ticket_medio=('ticket_medio', 'mean'),
         n_partidos=('id_partido', 'nunique'),
     ).reset_index().sort_values('hora_exacta')
 
     colores = ['#f39c12' if v == agg['ticket_medio'].max() else '#18395c' for v in agg['ticket_medio']]
+
+    hover_texts = [
+        f"<b>Hora: {h}</b><br>Ticket medio: {v:.2f}€<br>"
+        f"Partidos: {int(n)} ({', '.join(rivals_map.get(h, []))})"
+        for h, v, n in zip(agg['hora_exacta'], agg['ticket_medio'], agg['n_partidos'])
+    ]
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -741,13 +752,8 @@ def build_fig_ticket_medio_hora(df_actual):
         text=[f"{v:.2f}€" for v in agg['ticket_medio']],
         textposition='outside',
         textfont=dict(color='#333', size=11, family='Montserrat', weight='bold'),
-        hovertemplate=(
-            '<b>Hora: %{x}</b><br>'
-            'Ticket medio: %{y:.2f}€<br>'
-            'Partidos: %{customdata}'
-            '<extra></extra>'
-        ),
-        customdata=[str(int(v)) for v in agg['n_partidos']],
+        hovertext=hover_texts,
+        hoverinfo='text',
     ))
     max_y = agg['ticket_medio'].max() * 1.15 if len(agg) > 0 else 20
     fig.update_layout(
@@ -755,6 +761,51 @@ def build_fig_ticket_medio_hora(df_actual):
         margin=dict(t=10, b=30, l=20, r=20),
         xaxis=dict(tickfont=dict(size=12, family='Montserrat')),
         yaxis=dict(showticklabels=False, range=[0, max_y])
+    )
+    return fig
+
+
+def build_fig_ticket_medio_metodo(df_metodo_actual):
+    """Gráfica GLOBAL: ticket medio por método de pago (excluye 'accumulated')."""
+    metodo_labels = {
+        'cash': 'Efectivo',
+        'credit_card': 'Tarjeta',
+        'club_card': 'moeDEiro',
+    }
+
+    # Filtrar accumulated (sistema de cuenta de palcos VIP)
+    df_filtered = df_metodo_actual[df_metodo_actual['payment_method'] != 'accumulated'].copy()
+    
+    agg = df_filtered.groupby('payment_method').agg(
+        recaudacion=('recaudacion', 'sum'),
+        n_pedidos=('n_pedidos', 'sum'),
+    ).reset_index()
+    agg['ticket_medio'] = (agg['recaudacion'] / agg['n_pedidos']).round(2)
+    agg['label'] = agg['payment_method'].map(metodo_labels).fillna(agg['payment_method'])
+    agg = agg.sort_values('ticket_medio', ascending=True)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=agg['ticket_medio'],
+        y=agg['label'],
+        orientation='h',
+        marker_color='#18395c',
+        width=0.4,
+        text=[f"{v:.2f}€" for v in agg['ticket_medio']],
+        textposition='outside',
+        textfont=dict(color='#333', size=11, family='Montserrat', weight='bold'),
+        hovertext=[
+            f"<b>{l}</b><br>Ticket medio: {tm:.2f}€<br>Pedidos: {fmt(int(np))}<br>Recaudación: {fmt(r)}€"
+            for l, tm, np, r in zip(agg['label'], agg['ticket_medio'], agg['n_pedidos'], agg['recaudacion'])
+        ],
+        hoverinfo='text',
+    ))
+    max_x = agg['ticket_medio'].max() * 1.25 if len(agg) > 0 else 20
+    fig.update_layout(
+        height=280,
+        margin=dict(t=10, b=30, l=100, r=40),
+        xaxis=dict(showticklabels=False, range=[0, max_x]),
+        yaxis=dict(tickfont=dict(size=12, family='Montserrat')),
     )
     return fig
 
@@ -798,8 +849,8 @@ def build_fig_metodo_pago_pie(df_metodo_filtered):
 # LAYOUT BUILDERS
 # =============================================================================
 
-def create_global_content(kpis, fig_recaudacion, fig_metodo, fig_productos, fig_cantinas,
-                          fig_rec_hora, fig_ticket_hora):
+def create_global_content(kpis, fig_recaudacion, fig_productos, fig_cantinas,
+                          fig_rec_hora, fig_ticket_hora, fig_ticket_metodo):
     """Contenido para vista GLOBAL."""
     return html.Div([
         html.Div(kpis, className="kpis-container"),
@@ -811,14 +862,7 @@ def create_global_content(kpis, fig_recaudacion, fig_metodo, fig_productos, fig_
                     dcc.Graph(figure=fig_recaudacion, config={'displayModeBar': False})
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
-            # Fila 2: Métodos de pago por partido
-            html.Div([
-                html.Div([
-                    html.H4("Distribución de Métodos de Pago por Partido"),
-                    dcc.Graph(figure=fig_metodo, config={'displayModeBar': False})
-                ], className="graph-card full-width"),
-            ], className="graphs-row"),
-            # Fila 3: Insights por hora (solo GLOBAL)
+            # Fila 2: Insights por hora (solo GLOBAL)
             html.Div([
                 html.Div([
                     html.H4("Recaudación Media por Hora de Inicio"),
@@ -828,6 +872,13 @@ def create_global_content(kpis, fig_recaudacion, fig_metodo, fig_productos, fig_
                     html.H4("Ticket Medio por Hora de Inicio"),
                     dcc.Graph(figure=fig_ticket_hora, config={'displayModeBar': False})
                 ], className="graph-card"),
+            ], className="graphs-row"),
+            # Fila 3: Ticket medio por método de pago
+            html.Div([
+                html.Div([
+                    html.H4("Ticket Medio por Método de Pago"),
+                    dcc.Graph(figure=fig_ticket_metodo, config={'displayModeBar': False})
+                ], className="graph-card full-width"),
             ], className="graphs-row"),
             # Fila 4: Top productos y cantinas (al fondo)
             html.Div([
@@ -967,14 +1018,14 @@ def update_page(franja_selected):
             ], className="kpis-row")
 
             fig_rec = build_fig_recaudacion(df_actual)
-            fig_met = build_fig_metodo_pago(df_metodo[df_metodo['temporada'] == 'actual'], df_actual)
             fig_prod = build_fig_productos(df_producto, df_prod_cantina=df_prod_cantina)
             fig_cant = build_fig_cantinas(df_cantina, df_prod_cantina=df_prod_cantina)
             fig_rec_hora = build_fig_recaudacion_media_hora(df_actual)
             fig_ticket_hora = build_fig_ticket_medio_hora(df_actual)
+            fig_ticket_metodo = build_fig_ticket_medio_metodo(df_metodo[df_metodo['temporada'] == 'actual'])
 
-            return create_global_content(kpis, fig_rec, fig_met, fig_prod, fig_cant,
-                                         fig_rec_hora, fig_ticket_hora)
+            return create_global_content(kpis, fig_rec, fig_prod, fig_cant,
+                                         fig_rec_hora, fig_ticket_hora, fig_ticket_metodo)
 
         # =====================================================================
         # VISTA POR FRANJA

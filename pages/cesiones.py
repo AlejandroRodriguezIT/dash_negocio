@@ -402,18 +402,26 @@ def update_graphs(_):
     df_partido_dia['dia_semana'] = pd.Categorical(df_partido_dia['dia_semana'], categories=orden_dias, ordered=True)
     df_partido_dia = df_partido_dia.sort_values('dia_semana').dropna()
     
-    hover_dia = ["<br>".join(r) for r in df_partido_dia['rivales'].tolist()]
+    hover_dia = [
+        f"<b>{d}</b><br>Promedio: {format_number(p)}<br>Partidos: {int(n)} ({', '.join(r)})"
+        for d, p, n, r in zip(
+            df_partido_dia['dia_semana'].astype(str),
+            df_partido_dia['promedio_vendidas'],
+            df_partido_dia['num_partidos'],
+            df_partido_dia['rivales'],
+        )
+    ]
     
     fig2 = go.Figure()
     fig2.add_trace(go.Bar(
         x=df_partido_dia['dia_semana'].astype(str),
         y=df_partido_dia['promedio_vendidas'],
-        marker_color='#3498db',
+        marker_color='#18395c',
         text=[f"{format_number(v)}" for v in df_partido_dia['promedio_vendidas']],
         textposition='outside',
         textfont=dict(color='#333', size=10, family='Montserrat', weight='bold'),
-        hovertemplate='<b>Rivales:</b><br>%{customdata}<extra></extra>',
-        customdata=hover_dia
+        hovertext=hover_dia,
+        hoverinfo='text',
     ))
     max_y_dia = df_partido_dia['promedio_vendidas'].max() * 1.25
     fig2.update_layout(
@@ -431,18 +439,26 @@ def update_graphs(_):
     }).reset_index()
     df_hora_agg.columns = ['hora', 'promedio_vendidas', 'num_partidos', 'rivales']
     
-    hover_hora = ["<br>".join(r) for r in df_hora_agg['rivales'].tolist()]
+    hover_hora = [
+        f"<b>Hora: {h}</b><br>Promedio: {format_number(p)}<br>Partidos: {int(n)} ({', '.join(r)})"
+        for h, p, n, r in zip(
+            df_hora_agg['hora'],
+            df_hora_agg['promedio_vendidas'],
+            df_hora_agg['num_partidos'],
+            df_hora_agg['rivales'],
+        )
+    ]
     
     fig3 = go.Figure()
     fig3.add_trace(go.Bar(
         x=df_hora_agg['hora'],
         y=df_hora_agg['promedio_vendidas'],
-        marker_color='#9b59b6',
+        marker_color='#18395c',
         text=[f"{format_number(v)}" for v in df_hora_agg['promedio_vendidas']],
         textposition='outside',
         textfont=dict(color='#333', size=10, family='Montserrat', weight='bold'),
-        hovertemplate='<b>Rivales:</b><br>%{customdata}<extra></extra>',
-        customdata=hover_hora
+        hovertext=hover_hora,
+        hoverinfo='text',
     ))
     max_y_hora = df_hora_agg['promedio_vendidas'].max() * 1.25
     fig3.update_layout(

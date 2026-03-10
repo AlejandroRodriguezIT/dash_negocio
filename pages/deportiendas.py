@@ -247,6 +247,9 @@ def build_fig_dia_semana(df_matchday):
                                        {4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}[d])
     cat_order = ['Intersemanales', 'Viernes', 'Sábado', 'Domingo']
 
+    # Recoger rivales por (temporada, categoria)
+    rivals_map = df.groupby(['temporada', 'categoria'])['rival'].apply(list).to_dict()
+
     grouped = df.groupby(['temporada', 'categoria']).agg(
         total=('ventas_riazor', 'sum'),
         n_partidos=('ventas_riazor', 'count'),
@@ -258,14 +261,16 @@ def build_fig_dia_semana(df_matchday):
 
     present_cats = [c for c in cat_order if c in actual['categoria'].values or c in anterior['categoria'].values]
 
-    def get_vals(sub, cats):
+    def get_vals(sub, cats, temp):
         m = sub.set_index('categoria')
-        return ([m.loc[c, 'promedio'] if c in m.index else 0 for c in cats],
-                [int(m.loc[c, 'n_partidos']) if c in m.index else 0 for c in cats],
-                [m.loc[c, 'total'] if c in m.index else 0 for c in cats])
+        promedios = [m.loc[c, 'promedio'] if c in m.index else 0 for c in cats]
+        ns = [int(m.loc[c, 'n_partidos']) if c in m.index else 0 for c in cats]
+        totales = [m.loc[c, 'total'] if c in m.index else 0 for c in cats]
+        rivales = [', '.join(rivals_map.get((temp, c), [])) for c in cats]
+        return promedios, ns, totales, rivales
 
-    p_ant, n_ant, t_ant = get_vals(anterior, present_cats)
-    p_act, n_act, t_act = get_vals(actual, present_cats)
+    p_ant, n_ant, t_ant, r_ant = get_vals(anterior, present_cats, 'anterior')
+    p_act, n_act, t_act, r_act = get_vals(actual, present_cats, 'actual')
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -274,8 +279,8 @@ def build_fig_dia_semana(df_matchday):
         text=[fmt(v) + '€' if v > 0 else '' for v in p_ant],
         textposition='outside',
         textfont=dict(color='#333', size=9, family='Montserrat', weight='bold'),
-        hovertext=[f"<b>{c} (24/25)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n}<br>Total: {fmt(t)}€"
-                   for c, p, n, t in zip(present_cats, p_ant, n_ant, t_ant)],
+        hovertext=[f"<b>{c} (24/25)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n} ({r})<br>Total: {fmt(t)}€"
+                   for c, p, n, t, r in zip(present_cats, p_ant, n_ant, t_ant, r_ant)],
         hoverinfo='text',
     ))
     fig.add_trace(go.Bar(
@@ -284,8 +289,8 @@ def build_fig_dia_semana(df_matchday):
         text=[fmt(v) + '€' if v > 0 else '' for v in p_act],
         textposition='outside',
         textfont=dict(color='#333', size=9, family='Montserrat', weight='bold'),
-        hovertext=[f"<b>{c} (25/26)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n}<br>Total: {fmt(t)}€"
-                   for c, p, n, t in zip(present_cats, p_act, n_act, t_act)],
+        hovertext=[f"<b>{c} (25/26)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n} ({r})<br>Total: {fmt(t)}€"
+                   for c, p, n, t, r in zip(present_cats, p_act, n_act, t_act, r_act)],
         hoverinfo='text',
     ))
 
@@ -305,6 +310,9 @@ def build_fig_franja_horaria(df_matchday):
     df['fecha'] = pd.to_datetime(df['fecha'])
     df['hora'] = df['fecha'].apply(lambda x: x.strftime('%H:%M'))
 
+    # Recoger rivales por (temporada, hora)
+    rivals_map = df.groupby(['temporada', 'hora'])['rival'].apply(list).to_dict()
+
     grouped = df.groupby(['temporada', 'hora']).agg(
         total=('ventas_riazor', 'sum'),
         n_partidos=('ventas_riazor', 'count'),
@@ -316,14 +324,16 @@ def build_fig_franja_horaria(df_matchday):
 
     all_hours = sorted(set(actual['hora'].tolist() + anterior['hora'].tolist()))
 
-    def get_vals(sub, hours):
+    def get_vals(sub, hours, temp):
         m = sub.set_index('hora')
-        return ([m.loc[h, 'promedio'] if h in m.index else 0 for h in hours],
-                [int(m.loc[h, 'n_partidos']) if h in m.index else 0 for h in hours],
-                [m.loc[h, 'total'] if h in m.index else 0 for h in hours])
+        promedios = [m.loc[h, 'promedio'] if h in m.index else 0 for h in hours]
+        ns = [int(m.loc[h, 'n_partidos']) if h in m.index else 0 for h in hours]
+        totales = [m.loc[h, 'total'] if h in m.index else 0 for h in hours]
+        rivales = [', '.join(rivals_map.get((temp, h), [])) for h in hours]
+        return promedios, ns, totales, rivales
 
-    p_ant, n_ant, t_ant = get_vals(anterior, all_hours)
-    p_act, n_act, t_act = get_vals(actual, all_hours)
+    p_ant, n_ant, t_ant, r_ant = get_vals(anterior, all_hours, 'anterior')
+    p_act, n_act, t_act, r_act = get_vals(actual, all_hours, 'actual')
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -332,8 +342,8 @@ def build_fig_franja_horaria(df_matchday):
         text=[fmt(v) + '€' if v > 0 else '' for v in p_ant],
         textposition='outside',
         textfont=dict(color='#333', size=9, family='Montserrat', weight='bold'),
-        hovertext=[f"<b>{h} (24/25)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n}<br>Total: {fmt(t)}€"
-                   for h, p, n, t in zip(all_hours, p_ant, n_ant, t_ant)],
+        hovertext=[f"<b>{h} (24/25)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n} ({r})<br>Total: {fmt(t)}€"
+                   for h, p, n, t, r in zip(all_hours, p_ant, n_ant, t_ant, r_ant)],
         hoverinfo='text',
     ))
     fig.add_trace(go.Bar(
@@ -342,8 +352,8 @@ def build_fig_franja_horaria(df_matchday):
         text=[fmt(v) + '€' if v > 0 else '' for v in p_act],
         textposition='outside',
         textfont=dict(color='#333', size=9, family='Montserrat', weight='bold'),
-        hovertext=[f"<b>{h} (25/26)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n}<br>Total: {fmt(t)}€"
-                   for h, p, n, t in zip(all_hours, p_act, n_act, t_act)],
+        hovertext=[f"<b>{h} (25/26)</b><br>Promedio: {fmt(p)}€<br>Partidos: {n} ({r})<br>Total: {fmt(t)}€"
+                   for h, p, n, t, r in zip(all_hours, p_act, n_act, t_act, r_act)],
         hoverinfo='text',
     ))
 
@@ -359,10 +369,14 @@ def build_fig_franja_horaria(df_matchday):
 
 def build_fig_matchday(df_matchday_actual):
     """Barras con escudos: ventas Riazor por día de partido."""
+    DIAS_ES = {0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves',
+               4: 'Viernes', 5: 'Sábado', 6: 'Domingo'}
     df = df_matchday_actual.sort_values('fecha')
+    df['fecha'] = pd.to_datetime(df['fecha'])
     rivales = df['rival'].tolist()
     results = df['resultado'].tolist()
     ventas = df['ventas_riazor'].tolist()
+    fechas_fmt = [f"{d.strftime('%d/%m/%y')}, {DIAS_ES.get(d.dayofweek, '')}" for d in df['fecha']]
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -371,8 +385,10 @@ def build_fig_matchday(df_matchday_actual):
         text=[fmt(v) + '€' if v > 0 else '—' for v in ventas],
         textposition='outside',
         textfont=dict(color='#333', size=10, family='Montserrat', weight='bold'),
-        hovertemplate='<b>%{customdata}</b><br>Ventas Riazor: %{y:,.0f}€<extra></extra>',
-        customdata=rivales,
+        hovertext=[f"<b>{r}</b><br>{f}<br>Ventas Riazor: {fmt(v)}€" if v > 0
+                   else f"<b>{r}</b><br>{f}<br>Ventas Riazor: —"
+                   for r, f, v in zip(rivales, fechas_fmt, ventas)],
+        hoverinfo='text',
     ))
 
     escudos_images, result_shapes = create_escudos_with_result(rivales, results)

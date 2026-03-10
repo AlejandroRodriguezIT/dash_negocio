@@ -13,6 +13,15 @@ from database import (
 
 dash.register_page(__name__, path="/", name="Inicio")
 
+# Mapa de tarjetas → permiso requerido (0 = global)
+# permiso: 1=Estadio, 2=Museo, 3=DéporTiendas, 4=DéporHosteleria
+CARDS_CONFIG = [
+    {"key": "estadio",      "permiso": 1, "title": "ESTADIO ABANCA-RIAZOR", "href": "/estadio/entradas"},
+    {"key": "museo",        "permiso": 2, "title": "MUSEO RCD",              "href": "/museo"},
+    {"key": "deportiendas", "permiso": 3, "title": "DÉPOR TIENDAS",          "href": "/deportiendas"},
+    {"key": "hosteleria",   "permiso": 4, "title": "DÉPOR HOSTELERIA",       "href": "/hosteleria"},
+]
+
 
 def fmt(val):
     """Formatea número con puntos como separador de miles."""
@@ -73,50 +82,57 @@ def _load_home_data():
     return rec_estadio, rec_hosteleria, rec_tiendas
 
 
-rec_estadio, rec_hosteleria, rec_tiendas = _load_home_data()
+def _build_card(cfg, data):
+    """Construye una tarjeta según su config y datos precargados."""
+    key = cfg["key"]
+    if key == "estadio":
+        return create_recaudacion_card(cfg["title"], f"{fmt(data['estadio'])}€",
+                                       color="#18395c", is_active=True, href=cfg["href"])
+    elif key == "museo":
+        return create_recaudacion_card(cfg["title"], "EN DESARROLLO",
+                                       color="#999", is_active=False, href=cfg["href"])
+    elif key == "deportiendas":
+        return create_recaudacion_card(cfg["title"], f"{fmt(data['deportiendas'])}€",
+                                       color="#18395c", is_active=True, href=cfg["href"])
+    elif key == "hosteleria":
+        return create_recaudacion_card(cfg["title"], f"{fmt(data['hosteleria'])}€",
+                                       color="#18395c", is_active=True, href=cfg["href"])
+
 
 layout = html.Div(
     className="cards-container",
-    children=[
-        # Fila 1
-        html.Div(
-            className="cards-row",
-            children=[
-                create_recaudacion_card(
-                    "ESTADIO ABANCA-RIAZOR",
-                    f"{fmt(rec_estadio)}€",
-                    color="#18395c",
-                    is_active=True,
-                    href="/estadio/entradas",
-                ),
-                create_recaudacion_card(
-                    "MUSEO RCD",
-                    "EN DESARROLLO",
-                    color="#999",
-                    is_active=False,
-                    href="/museo",
-                ),
-            ]
-        ),
-        # Fila 2
-        html.Div(
-            className="cards-row",
-            children=[
-                create_recaudacion_card(
-                    "DÉPOR TIENDAS",
-                    f"{fmt(rec_tiendas)}€",
-                    color="#18395c",
-                    is_active=True,
-                    href="/deportiendas",
-                ),
-                create_recaudacion_card(
-                    "DÉPOR HOSTELERIA",
-                    f"{fmt(rec_hosteleria)}€",
-                    color="#18395c",
-                    is_active=True,
-                    href="/hosteleria",
-                ),
-            ]
-        ),
-    ]
+    id="home-cards-container",
+    children=[]
 )
+
+
+@callback(
+    Output("home-cards-container", "children"),
+    Input("session-store", "data"),
+)
+def update_home_cards(session):
+    """Muestra solo las tarjetas a las que el usuario tiene acceso."""
+    rec_estadio, rec_hosteleria, rec_tiendas = _load_home_data()
+    data = {"estadio": rec_estadio, "hosteleria": rec_hosteleria, "deportiendas": rec_tiendas}
+
+    # Determinar permisos del usuario
+    if session and session.get('authenticated'):
+        permisos_raw = str(session.get('permisos', '0'))
+        permisos_list = [p.strip() for p in permisos_raw.split(',')]
+        is_global = '0' in permisos_list
+    else:
+        is_global = True
+        permisos_list = ['0']
+
+    # Filtrar tarjetas según permisos
+    visible_cards = []
+    for cfg in CARDS_CONFIG:
+        if is_global or str(cfg["permiso"]) in permisos_list:
+            visible_cards.append(_build_card(cfg, data))
+
+    # Distribuir en filas de 2
+    rows = []
+    for i in range(0, len(visible_cards), 2):
+        rows.append(html.Div(className="cards-row", children=visible_cards[i:i+2]))
+
+    return rows
