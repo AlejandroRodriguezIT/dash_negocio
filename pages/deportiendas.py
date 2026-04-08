@@ -411,21 +411,36 @@ def build_fig_matchday(df_matchday_actual):
 # KPI CARDS
 # =============================================================================
 
-def create_kpi_simple(valor, label, formato="numero"):
+def _kpi_tooltip(text):
+    if not text:
+        return None
+    return html.Div([
+        html.Span("?", className="kpi-tooltip-icon"),
+        html.Div(text, className="kpi-tooltip-box"),
+    ], className="kpi-tooltip-wrapper")
+
+
+def create_kpi_simple(valor, label, formato="numero", tooltip=None):
     """KPI card sin comparativa (solo 25/26)."""
     if formato == "euros":
         texto = f"{fmt(valor)}€"
     else:
         texto = fmt(valor)
+    label_children = [label]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"whiteSpace": "nowrap", "display": "flex",
+                                "alignItems": "center", "justifyContent": "center",
+                                "gap": "5px"})
     return html.Div([
-        html.Div(label, className="kpi-label-top",
-                 style={"whiteSpace": "nowrap"}),
+        label_div,
         html.Div(texto, className="kpi-value kpi-value-positive",
                  style={"textAlign": "center"}),
     ], className="kpi-card")
 
 
-def create_kpi_comparativa(valor_actual, valor_anterior, label, small_title=False):
+def create_kpi_comparativa(valor_actual, valor_anterior, label, small_title=False, tooltip=None):
     """KPI card con comparativa matchday Riazor."""
     texto_actual = f"{fmt(valor_actual)}€"
     texto_anterior = f"{fmt(valor_anterior)}€"
@@ -436,11 +451,15 @@ def create_kpi_comparativa(valor_actual, valor_anterior, label, small_title=Fals
     else:
         pct_text = "N/A"
         color_class = "kpi-value-positive"
-    title_style = {"whiteSpace": "nowrap"}
+    title_style = {"whiteSpace": "nowrap", "display": "flex",
+                   "alignItems": "center", "justifyContent": "center", "gap": "5px"}
     if small_title:
         title_style["fontSize"] = "11px"
+    label_children = [label]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
     return html.Div([
-        html.Div(label, className="kpi-label-top", style=title_style),
+        html.Div(label_children, className="kpi-label-top", style=title_style),
         html.Div([
             html.Span(texto_actual, className=f"kpi-value {color_class}"),
             html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}")
@@ -484,11 +503,16 @@ def update_page(_):
 
         kpis_row = html.Div([
             create_kpi_comparativa(rec_matchday_actual, rec_matchday_anterior,
-                                   "Ventas Matchday Riazor 25/26", small_title=True),
-            create_kpi_simple(rec_total, "Recaudación Total 25/26", "euros"),
-            create_kpi_simple(ben_total, "Beneficio Total 25/26", "euros"),
-            create_kpi_simple(num_ventas, "Nº Ventas Total 25/26"),
-            create_kpi_simple(ticket, "Ticket Promedio 25/26", "euros"),
+                                   "Ventas Matchday Riazor 25/26", small_title=True,
+                                   tooltip="Suma de ventas realizadas en la tienda de Riazor los días de partido. Se compara con la temporada 24/25."),
+            create_kpi_simple(rec_total, "Recaudación Total 25/26", "euros",
+                              tooltip="Suma total de ingresos de DéporTiendas en la temporada 25/26 (todas las tiendas y canales)."),
+            create_kpi_simple(ben_total, "Beneficio Total 25/26", "euros",
+                              tooltip="Beneficio neto total = Recaudación − Coste de los productos vendidos."),
+            create_kpi_simple(num_ventas, "Nº Ventas Total 25/26",
+                              tooltip="Número total de transacciones de venta realizadas en la temporada 25/26."),
+            create_kpi_simple(ticket, "Ticket Promedio 25/26", "euros",
+                              tooltip="Importe medio por venta. Cálculo: Recaudación Total ÷ Nº Ventas."),
         ], className="kpis-row")
 
         # Charts

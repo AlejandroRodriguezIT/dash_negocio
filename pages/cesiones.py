@@ -143,8 +143,24 @@ def create_escudos_with_result(rivales, results, y_pos=-0.09, sizex=0.55, sizey=
             ))
     return images, shapes
 
-def create_kpi_card(valor_actual, valor_anterior, label, formato="numero"):
+def _kpi_tooltip(text):
+    if not text:
+        return None
+    return html.Div([
+        html.Span("?", className="kpi-tooltip-icon"),
+        html.Div(text, className="kpi-tooltip-box"),
+    ], className="kpi-tooltip-wrapper")
+
+
+def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", tooltip=None):
     """Crea una tarjeta KPI con comparativa y % de diferencia."""
+    label_children = [label]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
     if formato == "euros":
         texto_actual = f"{format_with_dots(valor_actual)}€"
         texto_anterior = f"{format_with_dots(valor_anterior)}€"
@@ -155,7 +171,6 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero"):
         texto_actual = format_with_dots(valor_actual)
         texto_anterior = format_with_dots(valor_anterior)
     
-    # Calcular % de diferencia
     if valor_anterior > 0:
         pct_diff = ((valor_actual - valor_anterior) / valor_anterior) * 100
         if pct_diff >= 0:
@@ -169,7 +184,7 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero"):
         color_class = "kpi-value-positive" if valor_actual >= valor_anterior else "kpi-value-negative"
     
     return html.Div([
-        html.Div(label, className="kpi-label-top"),
+        label_div,
         html.Div([
             html.Span(texto_actual, className=f"kpi-value {color_class}"),
             html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}")
@@ -301,10 +316,14 @@ def update_graphs(_):
     rec_media_ant = (total_saldo_ant / total_vendidas_ant) if total_vendidas_ant > 0 else 0
     
     kpis = html.Div([
-        create_kpi_card(total_cesiones, total_cesiones_ant, "Total Cesiones Generadas"),
-        create_kpi_card(total_vendidas, total_vendidas_ant, "Cesiones Vendidas"),
-        create_kpi_card(rec_media, rec_media_ant, "Recaudación Media por Cesión", "euros"),
-        create_kpi_card(total_saldo, total_saldo_ant, "Recaudación Total", "euros"),
+        create_kpi_card(total_cesiones, total_cesiones_ant, "Total Cesiones Generadas",
+                        tooltip="Nº total de abonos puestos a la venta por los abonados a través del sistema de cesiones."),
+        create_kpi_card(total_vendidas, total_vendidas_ant, "Cesiones Vendidas",
+                        tooltip="Nº de cesiones que fueron efectivamente vendidas."),
+        create_kpi_card(rec_media, rec_media_ant, "Recaudación Media por Cesión", "euros",
+                        tooltip="Importe medio obtenido por cada cesión vendida. Cálculo: Recaudación Total ÷ Cesiones Vendidas."),
+        create_kpi_card(total_saldo, total_saldo_ant, "Recaudación Total", "euros",
+                        tooltip="Suma total de ingresos por venta de cesiones en todos los partidos."),
     ], className="kpis-row")
     
     # Cargar desglose por sector para hovers

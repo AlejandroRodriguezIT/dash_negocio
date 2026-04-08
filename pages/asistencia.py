@@ -163,7 +163,16 @@ def create_escudos_with_result(rivales, results, y_pos=-0.09, sizex=0.55, sizey=
     return images, shapes
 
 
-def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_anterior):
+def _kpi_tooltip(text):
+    if not text:
+        return None
+    return html.Div([
+        html.Span("?", className="kpi-tooltip-icon"),
+        html.Div(text, className="kpi-tooltip-box"),
+    ], className="kpi-tooltip-wrapper")
+
+
+def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_anterior, tooltip=None):
     """Tarjeta KPI de Abonados por Partido con % del total integrado."""
     if promedio_anterior > 0:
         pct_diff = ((promedio_actual - promedio_anterior) / promedio_anterior) * 100
@@ -180,8 +189,16 @@ def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_ante
         color_class = "kpi-value-positive"
         color_css = "var(--success-green)"
     
+    lbl = "Abonados por Partido (% del total)"
+    label_children = [lbl]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
     return html.Div([
-        html.Div("Abonados por Partido (% del total)", className="kpi-label-top"),
+        label_div,
         html.Div([
             html.Span(format_with_dots(promedio_actual), className=f"kpi-value {color_class}", style={"fontSize": "1.15rem"}),
             html.Span(f" ({pct_actual:.1f}%)", style={"fontSize": "0.75rem", "fontWeight": "600", "color": color_css}),
@@ -191,15 +208,23 @@ def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_ante
     ], className="kpi-card")
 
 
-def create_kpi_sexo(df_sexo, total_abonados):
+def create_kpi_sexo(df_sexo, total_abonados, tooltip=None):
     """Tarjeta KPI con desglose por sexo."""
     male_count = df_sexo[df_sexo['gender'] == 'MALE']['total'].sum() if 'MALE' in df_sexo['gender'].values else 0
     female_count = df_sexo[df_sexo['gender'] == 'FEMALE']['total'].sum() if 'FEMALE' in df_sexo['gender'].values else 0
     male_pct = (male_count / total_abonados * 100) if total_abonados > 0 else 0
     female_pct = (female_count / total_abonados * 100) if total_abonados > 0 else 0
-    
+
+    lbl = "Sexo de los Abonados"
+    label_children = [lbl]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
     return html.Div([
-        html.Div("Sexo de los Abonados", className="kpi-label-top"),
+        label_div,
         html.Div([
             html.Div([
                 html.Span(format_with_dots(male_count), style={"fontSize": "1.2rem", "fontWeight": "700", "color": "#2c5282"}),
@@ -215,10 +240,16 @@ def create_kpi_sexo(df_sexo, total_abonados):
     ], className="kpi-card")
 
 
-def create_kpi_edad(edad_promedio):
+def create_kpi_edad(edad_promedio, tooltip=None):
     """Tarjeta KPI de edad promedio (solo informativo, sin comparativa)."""
+    label_children = ["Edad Promedio"]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
     return html.Div([
-        html.Div("Edad Promedio", className="kpi-label-top"),
+        label_div,
         html.Div(
             f"{edad_promedio:.1f} años",
             className="kpi-value",
@@ -227,7 +258,7 @@ def create_kpi_edad(edad_promedio):
     ], className="kpi-card")
 
 
-def create_kpi_tardios(promedio_actual, pct_tarde, promedio_anterior, pct_tarde_anterior):
+def create_kpi_tardios(promedio_actual, pct_tarde, promedio_anterior, pct_tarde_anterior, tooltip=None):
     """Tarjeta KPI de Abonados Tardíos (lógica inversa: menor es mejor)."""
     if promedio_anterior > 0:
         pct_diff = ((promedio_actual - promedio_anterior) / promedio_anterior) * 100
@@ -244,14 +275,49 @@ def create_kpi_tardios(promedio_actual, pct_tarde, promedio_anterior, pct_tarde_
         color_class = "kpi-value-positive"
         color_css = "var(--success-green)"
     
+    lbl = "Abonados Tardíos por partido"
+    label_children = [lbl]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
     return html.Div([
-        html.Div("Abonados Tardíos por partido", className="kpi-label-top"),
+        label_div,
         html.Div([
             html.Span(format_with_dots(promedio_actual), className=f"kpi-value {color_class}"),
             html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}")
         ], style={"display": "flex", "alignItems": "baseline", "justifyContent": "center", "gap": "4px"}),
         html.Div(f"Temp. 24/25: {format_with_dots(promedio_anterior)}", className="kpi-previous"),
     ], className="kpi-card")
+
+
+def create_legend_with_tooltips():
+    """Crea leyenda personalizada con iconos (?) que muestran tooltips explicativos."""
+    items = [
+        {
+            "label": "Espectadores Totales",
+            "color": "#3498db",
+            "tooltip": "Suma de abonados asistentes (accesos por torno) + entradas vendidas al p\u00fablico general + invitaciones, agregado por zonas del estadio."
+        },
+        {
+            "label": "Abonados Asistentes",
+            "color": "#e74c3c",
+            "tooltip": "N\u00ba de abonados \u00fanicos que accedieron al estadio (registro de tornos). Se excluyen abonos con localidad \u2018SIN ASIENTO\u2019, \u2018CERO\u2019 y \u2018AREA 1906\u2019."
+        },
+    ]
+    return html.Div([
+        html.Div([
+            html.Span(className="legend-color", style={"backgroundColor": item["color"]}),
+            html.Span(item["label"], style={"color": item["color"]}),
+            html.Div([
+                html.Span("?", className="legend-tooltip-icon"),
+                html.Div(item["tooltip"], className="legend-tooltip-box"),
+            ], className="legend-tooltip-wrapper"),
+        ], className="legend-item")
+        for item in items
+    ], className="custom-legend")
 
 
 def loading_component():
@@ -305,7 +371,11 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
             html.Div([
                 html.Div([
                     html.H4("Evolutivo de Asistencia ABANCA - Riazor"),
-                    dcc.Graph(figure=fig3, config={'displayModeBar': False})
+                    create_legend_with_tooltips(),
+                    dcc.Graph(figure=fig3, config={'displayModeBar': False}),
+                    html.P("Excluidos abonados sin localidad en el estadio",
+                           style={'fontStyle': 'italic', 'fontSize': '11px', 'color': '#888',
+                                  'textAlign': 'right', 'margin': '2px 10px 0 0'})
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
             
@@ -359,9 +429,16 @@ def update_page(_):
         kpi_actual = df_kpis[df_kpis['temporada'] == 'actual'].iloc[0]
         kpi_anterior = df_kpis[df_kpis['temporada'] == 'anterior'].iloc[0]
         
+        # KPI tooltip helpers
+        TT_sexo = "Distribución por género de los abonados asistentes al estadio."
+
         # Crear KPI de sexo manualmente desde datos pre-calculados
+        sexo_lbl = ["Sexo de los Abonados", _kpi_tooltip(TT_sexo)]
+        sexo_label_div = html.Div(sexo_lbl, className="kpi-label-top",
+                                  style={"display": "flex", "alignItems": "center",
+                                         "justifyContent": "center", "gap": "5px"})
         df_sexo_kpi = html.Div([
-            html.Div("Sexo de los Abonados", className="kpi-label-top"),
+            sexo_label_div,
             html.Div([
                 html.Div([
                     html.Span(format_with_dots(kpi_actual['male_count']), style={"fontSize": "1.2rem", "fontWeight": "700", "color": "#2c5282"}),
@@ -379,13 +456,16 @@ def update_page(_):
         kpis = html.Div([
             create_kpi_abonados(
                 kpi_actual['promedio_asistentes'], kpi_actual['pct_asistencia'],
-                kpi_anterior['promedio_asistentes'], kpi_anterior['pct_asistencia']
+                kpi_anterior['promedio_asistentes'], kpi_anterior['pct_asistencia'],
+                tooltip="Media de abonados que accedieron al estadio por partido (registro de tornos). Se excluyen abonos 'SIN ASIENTO', 'CERO' y 'AREA 1906'. El % se calcula sobre el total de abonados."
             ),
             df_sexo_kpi,
-            create_kpi_edad(kpi_actual['edad_promedio']),
+            create_kpi_edad(kpi_actual['edad_promedio'],
+                           tooltip="Edad media de los abonados asistentes."),
             create_kpi_tardios(
                 kpi_actual['promedio_tarde'], kpi_actual['pct_tarde'],
-                kpi_anterior['promedio_tarde'], kpi_anterior['pct_tarde']
+                kpi_anterior['promedio_tarde'], kpi_anterior['pct_tarde'],
+                tooltip="Media de abonados que accedieron al estadio después del inicio del partido. Un valor menor indica mayor puntualidad."
             ),
         ], className="kpis-row")
         
@@ -484,7 +564,7 @@ def update_page(_):
             margin=dict(b=50, t=20, l=40, r=20),
             images=escudos_g3,
             shapes=result_shapes_g3,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center"),
+            showlegend=False,
             xaxis=dict(
                 tickmode='array',
                 tickvals=list(range(len(rivales_g3))),
