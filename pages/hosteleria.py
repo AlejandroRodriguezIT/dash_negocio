@@ -136,14 +136,23 @@ def get_escudo_path(team_name):
     return None
 
 
-def format_with_dots(val):
-    """Formatea número con puntos como separador de miles."""
+def format_with_dots(val, decimals=0):
+    """Formatea número con puntos como separador de miles y comas para decimales."""
+    if pd.isna(val):
+        return "0"
+    if decimals > 0:
+        texto = f"{val:,.{decimals}f}"
+        # Cambiar el separador de miles (,) por (.) y el decimal (.) por (,)
+        # Ej: 1,234.56 -> 1.234,56
+        parts = texto.split('.')
+        parts[0] = parts[0].replace(',', '.')
+        return ','.join(parts)
     return f"{val:,.0f}".replace(",", ".")
 
 
-def fmt(val):
+def fmt(val, decimals=0):
     """Alias corto de format_with_dots."""
-    return f"{val:,.0f}".replace(",", ".")
+    return format_with_dots(val, decimals)
 
 
 def get_result_color(result_str):
@@ -188,33 +197,30 @@ def create_escudos_with_result(rivales, results, y_pos=-0.09, sizex=0.55, sizey=
     return images, shapes
 
 
-def _kpi_tooltip(text):
+def _kpi_tooltip(text, pos=None):
     """Genera el icono (?) con tooltip para tarjetas KPI."""
     if not text:
         return None
+    tooltip_class = f"kpi-tooltip-box {pos}" if pos else "kpi-tooltip-box"
     return html.Div([
         html.Span("?", className="kpi-tooltip-icon"),
-        html.Div(text, className="kpi-tooltip-box"),
+        html.Div(text, className=tooltip_class),
     ], className="kpi-tooltip-wrapper")
 
 
-def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", tooltip=None):
-    """Crea una tarjeta KPI con comparativa y % de diferencia.
-
-    Si valor_anterior es None, muestra sólo el valor actual sin comparativa
-    (modo análisis individual).
-    """
+def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", tooltip=None, tooltip_pos=None, decimals=0):
+    """Crea una tarjeta KPI con comparativa y % de diferencia."""
     label_children = [label]
     if tooltip:
-        label_children.append(_kpi_tooltip(tooltip))
+        label_children.append(_kpi_tooltip(tooltip, pos=tooltip_pos))
     label_div = html.Div(label_children, className="kpi-label-top",
                          style={"display": "flex", "alignItems": "center",
                                 "justifyContent": "center", "gap": "5px"})
 
     if formato == "euros":
-        texto_actual = f"{fmt(valor_actual)}€"
+        texto_actual = f"{fmt(valor_actual, decimals)}€"
     else:
-        texto_actual = fmt(valor_actual)
+        texto_actual = fmt(valor_actual, decimals)
 
     if valor_anterior is None:
         return html.Div([
@@ -227,9 +233,9 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", toolt
         ], className="kpi-card")
 
     if formato == "euros":
-        texto_anterior = f"{fmt(valor_anterior)}€"
+        texto_anterior = f"{fmt(valor_anterior, decimals)}€"
     else:
-        texto_anterior = fmt(valor_anterior)
+        texto_anterior = fmt(valor_anterior, decimals)
 
     if valor_anterior > 0:
         pct_diff = ((valor_actual - valor_anterior) / valor_anterior) * 100
@@ -300,10 +306,11 @@ def loading_component():
 def create_section_header():
     """Crea el header con título y botones de franja horaria."""
     tabs = [
-        {"id": "btn-franja-GLOBAL",    "label": "GLOBAL",    "subtitle": None},
-        {"id": "btn-franja-MEDIODIA",  "label": "MEDIODÍA",  "subtitle": "14:00 - 16:15"},
-        {"id": "btn-franja-TARDE",     "label": "TARDE",     "subtitle": "17:00 - 19:00"},
-        {"id": "btn-franja-NOCHE",     "label": "NOCHE",     "subtitle": "20:30 - 21:00"},
+        {"id": "btn-franja-GLOBAL",       "label": "GLOBAL",              "subtitle": None},
+        {"id": "btn-franja-INDIVIDUAL",   "label": "ANÁLISIS INDIVIDUAL", "subtitle": None},
+        {"id": "btn-franja-MEDIODIA",     "label": "MEDIODÍA",            "subtitle": "14:00 - 16:15"},
+        {"id": "btn-franja-TARDE",        "label": "TARDE",               "subtitle": "17:00 - 19:00"},
+        {"id": "btn-franja-NOCHE",        "label": "NOCHE",               "subtitle": "20:30 - 21:00"},
     ]
 
     return html.Div([
@@ -322,21 +329,31 @@ def create_section_header():
     ], className="section-header")
 
 
+def create_sub_tabs():
+    """Crea la botonera secundaria: EVOLUTIVO | MÉTODOS DE PAGO | DESGLOSE DE VENTAS."""
+    sub_tabs = [
+        {"id": "btn-sub-EVOLUTIVO",  "label": "EVOLUTIVO"},
+        {"id": "btn-sub-METODOS",    "label": "MÉTODOS DE PAGO"},
+        {"id": "btn-sub-DESGLOSE",   "label": "DESGLOSE DE VENTAS"},
+    ]
+    return html.Div([
+        html.Button(
+            tab["label"],
+            id=tab["id"],
+            n_clicks=1 if tab["id"] == "btn-sub-EVOLUTIVO" else 0,
+            className=f"section-tab {'active' if tab['id'] == 'btn-sub-EVOLUTIVO' else ''}",
+        ) for tab in sub_tabs
+    ], className="section-tabs", style={"marginBottom": "8px"})
+
+
 # Layout de la página
 layout = html.Div([
     create_section_header(),
     dcc.Store(id="hosteleria-franja-store", data="GLOBAL"),
     dcc.Store(id="hosteleria-selected-partidos", data=[]),
-    # Botón ANÁLISIS INDIVIDUAL
-    html.Div(
-        html.Button(
-            "ANÁLISIS INDIVIDUAL",
-            id="btn-analisis-individual",
-            className="btn-analisis-individual",
-            n_clicks=0,
-        ),
-        style={"padding": "0 0 4px 0"}
-    ),
+    dcc.Store(id="hosteleria-sub-tab-store", data="EVOLUTIVO"),
+    # Sub-tabs de contenido
+    html.Div(create_sub_tabs(), style={"padding": "0 0 4px 0"}),
     # Modal de selección de partidos
     html.Div(
         id="modal-hosteleria-overlay",
@@ -628,57 +645,63 @@ def _get_top_products_per_cantina(df_prod_cantina, store_name, hora_filter=None,
     return '<br>'.join([f"  {i+1}. {name} ({fmt(int(qty))} uds)" for i, (name, qty) in enumerate(agg.items())])
 
 
-def build_fig_cantinas(df_cantina, hora_filter=None, df_prod_cantina=None):
-    """Top 10 cantinas horizontal bar. hora_filter puede ser lista de horas."""
+def build_fig_promedio_stores(df_cantina, n_partidos, store_type='Barra',
+                               hora_filter=None, df_prod_cantina=None):
+    """Gráfica de ingreso promedio por punto de venta.
+    store_type: 'Barra' o 'Palco' para filtrar por prefijo de store_name."""
+    n = max(n_partidos, 1)
+
     if hora_filter and hora_filter != 'GLOBAL':
         if isinstance(hora_filter, list):
             df_filt = df_cantina[df_cantina['hora_exacta'].isin(hora_filter)]
         else:
             df_filt = df_cantina[df_cantina['hora_exacta'] == hora_filter]
-        df_filt = df_filt.groupby(['store_id', 'store_name']).agg(
-            n_pedidos=('n_pedidos', 'sum'),
-            recaudacion=('recaudacion', 'sum'),
-            cantidad=('cantidad', 'sum'),
-        ).reset_index()
     else:
-        df_filt = df_cantina.groupby(['store_id', 'store_name']).agg(
-            n_pedidos=('n_pedidos', 'sum'),
-            recaudacion=('recaudacion', 'sum'),
-            cantidad=('cantidad', 'sum'),
-        ).reset_index()
+        df_filt = df_cantina.copy()
 
-    top10 = df_filt.nlargest(10, 'recaudacion').sort_values('recaudacion', ascending=True)
+    # Filtrar por tipo de punto de venta
+    df_filt = df_filt[df_filt['store_name'].str.startswith(store_type)]
 
-    if top10.empty:
+    agg = df_filt.groupby(['store_id', 'store_name']).agg(
+        recaudacion=('recaudacion', 'sum'),
+    ).reset_index()
+
+    agg['recaudacion_avg'] = agg['recaudacion'] / n
+    agg = agg.sort_values('recaudacion_avg', ascending=True)
+
+    if agg.empty:
         fig = go.Figure()
         fig.update_layout(annotations=[{"text": "Sin datos", "showarrow": False}], height=350)
         return fig
 
     # Build hover with top 5 products per cantina
     hover_texts = []
-    for _, row in top10.iterrows():
-        base = f"<b>{row['store_name']}</b>"
+    for _, row in agg.iterrows():
+        base = f"<b>{row['store_name']}</b><br>Ingreso medio: {fmt(row['recaudacion_avg'], 2)}€"
         if df_prod_cantina is not None and not df_prod_cantina.empty:
             top_prods = _get_top_products_per_cantina(df_prod_cantina, row['store_name'], hora_filter)
-            base += f"<br><br><b>Top 5 productos:</b><br>{top_prods}"
+            base += f"<br><br><b>Top 5 productos (Total):</b><br>{top_prods}"
         hover_texts.append(base)
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=top10['recaudacion'],
-        y=top10['store_name'],
+        x=agg['recaudacion_avg'],
+        y=agg['store_name'],
         orientation='h',
         marker_color='#18395c',
-        text=[fmt(v) + '€' for v in top10['recaudacion']],
+        text=[fmt(v, 2) + '€' for v in agg['recaudacion_avg']],
         textposition='outside',
         textfont=dict(color='#333', size=10, family='Montserrat', weight='bold'),
         hovertext=hover_texts,
         hoverinfo='text',
     ))
-    max_x = top10['recaudacion'].max() * 1.25 if len(top10) > 0 else 100
+
+    max_x = agg['recaudacion_avg'].max() * 1.25 if len(agg) > 0 else 100
+    h = max(350, len(agg) * 35)
+
     fig.update_layout(
-        height=350,
-        margin=dict(t=10, b=20, l=100, r=40),
+        height=h,
+        margin=dict(t=10, b=20, l=120, r=40),
         xaxis=dict(showticklabels=False, range=[0, max_x]),
         yaxis=dict(tickfont=dict(size=10, family='Montserrat'))
     )
@@ -776,7 +799,7 @@ def build_fig_bebidas(df_producto, hora_filter=None, n_partidos=1, df_prod_canti
 
 
 def build_fig_comestibles(df_producto, hora_filter=None, n_partidos=1, df_prod_cantina=None):
-    """Top 10 comestibles más consumidos (promedio por partido)."""
+    """Top 10 comestibles más consumidas (promedio por partido)."""
     return _build_fig_categoria(df_producto, 'comestible', hora_filter, '#18395c', 'Comestibles',
                                  n_partidos, df_prod_cantina)
 
@@ -944,41 +967,17 @@ def build_fig_metodo_pago_pie(df_metodo_filtered):
 # LAYOUT BUILDERS
 # =============================================================================
 
-def create_global_content(kpis, fig_recaudacion, fig_productos, fig_cantinas,
-                          fig_rec_hora, fig_ticket_hora, fig_ticket_metodo,
-                          fig_pct_metodo=None):
-    """Contenido para vista GLOBAL."""
-    # Fila 3: Ticket medio + % facturación por método de pago (lado a lado)
-    if fig_pct_metodo is not None:
-        fila_metodo = html.Div([
-            html.Div([
-                html.H4("Ticket Medio por Método de Pago"),
-                dcc.Graph(figure=fig_ticket_metodo, config={'displayModeBar': False})
-            ], className="graph-card"),
-            html.Div([
-                html.H4("% Facturación por Método de Pago"),
-                dcc.Graph(figure=fig_pct_metodo, config={'displayModeBar': False})
-            ], className="graph-card"),
-        ], className="graphs-row")
-    else:
-        fila_metodo = html.Div([
-            html.Div([
-                html.H4("Ticket Medio por Método de Pago"),
-                dcc.Graph(figure=fig_ticket_metodo, config={'displayModeBar': False})
-            ], className="graph-card full-width"),
-        ], className="graphs-row")
-
+def build_evolutivo_content(kpis, fig_recaudacion, fig_rec_hora, fig_ticket_hora):
+    """Sub-tab EVOLUTIVO: KPIs + Recaudación por Partido + Hora de Inicio."""
     return html.Div([
         html.Div(kpis, className="kpis-container"),
         html.Div([
-            # Fila 1: Recaudación por partido
             html.Div([
                 html.Div([
                     html.H4("Recaudación por Partido"),
                     dcc.Graph(figure=fig_recaudacion, config={'displayModeBar': False})
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
-            # Fila 2: Insights por hora (solo GLOBAL)
             html.Div([
                 html.Div([
                     html.H4("Recaudación Media por Hora de Inicio"),
@@ -989,9 +988,33 @@ def create_global_content(kpis, fig_recaudacion, fig_productos, fig_cantinas,
                     dcc.Graph(figure=fig_ticket_hora, config={'displayModeBar': False})
                 ], className="graph-card"),
             ], className="graphs-row"),
-            # Fila 3: Métodos de pago
-            fila_metodo,
-            # Fila 4: Top productos y cantinas (al fondo)
+        ], className="graphs-container"),
+    ], className="page-content-container")
+
+
+def build_metodos_content(fig_ticket_metodo, fig_pct_metodo):
+    """Sub-tab MÉTODOS DE PAGO: Ticket Medio + % Facturación."""
+    return html.Div([
+        html.Div([
+            html.Div([
+                html.Div([
+                    html.H4("Ticket Medio por Método de Pago"),
+                    dcc.Graph(figure=fig_ticket_metodo, config={'displayModeBar': False})
+                ], className="graph-card"),
+                html.Div([
+                    html.H4("% Facturación por Método de Pago"),
+                    dcc.Graph(figure=fig_pct_metodo, config={'displayModeBar': False})
+                ], className="graph-card"),
+            ], className="graphs-row"),
+        ], className="graphs-container"),
+    ], className="page-content-container")
+
+
+def build_desglose_content(fig_productos, fig_barras, fig_palcos):
+    """Sub-tab DESGLOSE DE VENTAS: Productos + Barras + Palcos."""
+    return html.Div([
+        html.Div([
+            # Top 10 productos (full width)
             html.Div([
                 html.Div([
                     html.H4("Top 10 Productos más Vendidos"),
@@ -999,46 +1022,18 @@ def create_global_content(kpis, fig_recaudacion, fig_productos, fig_cantinas,
                     html.P("*Excluyendo la venta de vasos solidarios",
                            style={"fontSize": "0.7rem", "color": "#999", "fontStyle": "italic",
                                   "textAlign": "center", "marginTop": "2px"})
-                ], className="graph-card"),
-                html.Div([
-                    html.H4("Top 10 Cantinas más rentables"),
-                    dcc.Graph(figure=fig_cantinas, config={'displayModeBar': False})
-                ], className="graph-card"),
-            ], className="graphs-row"),
-        ], className="graphs-container"),
-    ], className="page-content-container")
-
-
-def create_franja_content(kpis, fig_recaudacion, fig_cantinas,
-                          fig_bebidas, fig_comestibles):
-    """Contenido para vista filtrada por franja horaria."""
-    return html.Div([
-        html.Div(kpis, className="kpis-container"),
-        html.Div([
-            # Fila 1: Recaudación por partido
-            html.Div([
-                html.Div([
-                    html.H4("Recaudación por Partido"),
-                    dcc.Graph(figure=fig_recaudacion, config={'displayModeBar': False})
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
-            # Fila 2: Bebidas y comestibles (promedios)
+            # Barras y Palcos (lado a lado)
             html.Div([
                 html.Div([
-                    html.H4("Top 10 Bebidas más Consumidas"),
-                    dcc.Graph(figure=fig_bebidas, config={'displayModeBar': False})
+                    html.H4("Recaudación Promedio por Barra"),
+                    dcc.Graph(figure=fig_barras, config={'displayModeBar': False})
                 ], className="graph-card"),
                 html.Div([
-                    html.H4("Top 10 Comestibles más Consumidos"),
-                    dcc.Graph(figure=fig_comestibles, config={'displayModeBar': False})
+                    html.H4("Recaudación Promedio por Palco"),
+                    dcc.Graph(figure=fig_palcos, config={'displayModeBar': False})
                 ], className="graph-card"),
-            ], className="graphs-row"),
-            # Fila 3: Cantinas
-            html.Div([
-                html.Div([
-                    html.H4("Top 10 Cantinas más rentables"),
-                    dcc.Graph(figure=fig_cantinas, config={'displayModeBar': False})
-                ], className="graph-card full-width"),
             ], className="graphs-row"),
         ], className="graphs-container"),
     ], className="page-content-container")
@@ -1048,7 +1043,8 @@ def create_franja_content(kpis, fig_recaudacion, fig_cantinas,
 # CALLBACKS
 # =============================================================================
 
-FRANJA_BTNS = ["btn-franja-GLOBAL", "btn-franja-MEDIODIA", "btn-franja-TARDE", "btn-franja-NOCHE"]
+FRANJA_BTNS = ["btn-franja-GLOBAL", "btn-franja-INDIVIDUAL", "btn-franja-MEDIODIA", "btn-franja-TARDE", "btn-franja-NOCHE"]
+SUB_TAB_BTNS = ["btn-sub-EVOLUTIVO", "btn-sub-METODOS", "btn-sub-DESGLOSE"]
 
 
 @callback(
@@ -1103,7 +1099,7 @@ def populate_modal(class_name, current_selection):
 @callback(
     Output("modal-hosteleria-overlay", "className"),
     Output("hosteleria-selected-partidos", "data"),
-    Input("btn-analisis-individual", "n_clicks"),
+    Output("hosteleria-franja-store", "data", allow_duplicate=True),
     Input("btn-modal-hosteleria-close", "n_clicks"),
     Input("btn-modal-hosteleria-cancelar", "n_clicks"),
     Input("btn-modal-hosteleria-aplicar", "n_clicks"),
@@ -1111,36 +1107,12 @@ def populate_modal(class_name, current_selection):
     State("hosteleria-selected-partidos", "data"),
     prevent_initial_call=True,
 )
-def manage_modal(open_c, close_c, cancel_c, apply_c, checklist_value, current_selection):
-    """Gestiona apertura/cierre del modal y aplica la selección.
-
-    Si hay selección activa, el botón principal limpia; si no, abre el modal.
-    """
+def manage_modal(close_c, cancel_c, apply_c, checklist_value, current_selection):
+    """Gestiona cierre del modal y aplica la selección."""
     trigger = ctx.triggered_id
-    if trigger == "btn-analisis-individual":
-        if current_selection:
-            return no_update, []  # limpiar selección sin abrir modal
-        return "modal-overlay visible", no_update  # abrir modal
     if trigger == "btn-modal-hosteleria-aplicar":
-        return "modal-overlay", checklist_value or []
-    return "modal-overlay", no_update
-
-
-@callback(
-    Output("btn-analisis-individual", "children"),
-    Output("btn-analisis-individual", "className"),
-    Input("hosteleria-selected-partidos", "data"),
-)
-def update_btn_label(selected_ids):
-    """Actualiza el texto del botón mostrando cuántos partidos están seleccionados."""
-    if selected_ids:
-        n = len(selected_ids)
-        label = "LIMPIAR SELECCIÓN" if n == 0 else f"ANÁLISIS INDIVIDUAL"
-        return [
-            label,
-            html.Span(f"{n} partido{'s' if n != 1 else ''}", className="selection-pill"),
-        ], "btn-analisis-individual active"
-    return "ANÁLISIS INDIVIDUAL", "btn-analisis-individual"
+        return "modal-overlay", checklist_value or [], "INDIVIDUAL"
+    return "modal-overlay", no_update, no_update
 
 
 @callback(
@@ -1149,7 +1121,8 @@ def update_btn_label(selected_ids):
     prevent_initial_call=True
 )
 def update_franja_store(*args):
-    """Actualiza la franja seleccionada y el estado activo de los botones."""
+    """Actualiza la franja seleccionada y el estado activo de los botones.
+    Si se hace clic en INDIVIDUAL, abre el modal."""
     trigger = ctx.triggered_id
     selected = trigger.replace("btn-franja-", "") if trigger and trigger.startswith("btn-franja-") else "GLOBAL"
     classes = [
@@ -1160,14 +1133,51 @@ def update_franja_store(*args):
 
 
 @callback(
+    Output("modal-hosteleria-overlay", "className", allow_duplicate=True),
+    Input("hosteleria-franja-store", "data"),
+    State("hosteleria-selected-partidos", "data"),
+    prevent_initial_call=True,
+)
+def open_modal_on_individual(franja, selected):
+    """Abre el modal cuando se selecciona INDIVIDUAL y no hay partidos seleccionados."""
+    if franja == "INDIVIDUAL" and not selected:
+        return "modal-overlay visible"
+    return no_update
+
+
+@callback(
+    [Output("hosteleria-sub-tab-store", "data")] + [Output(b, "className") for b in SUB_TAB_BTNS],
+    [Input(b, "n_clicks") for b in SUB_TAB_BTNS],
+    prevent_initial_call=True
+)
+def update_sub_tab(*args):
+    """Actualiza la sub-tab seleccionada."""
+    trigger = ctx.triggered_id
+    mapping = {
+        "btn-sub-EVOLUTIVO": "EVOLUTIVO",
+        "btn-sub-METODOS": "METODOS",
+        "btn-sub-DESGLOSE": "DESGLOSE",
+    }
+    selected = mapping.get(trigger, "EVOLUTIVO")
+    classes = [
+        "section-tab active" if b == trigger else "section-tab"
+        for b in SUB_TAB_BTNS
+    ]
+    return [selected] + classes
+
+
+@callback(
     Output("content-hosteleria", "children"),
     Input("hosteleria-franja-store", "data"),
     Input("hosteleria-selected-partidos", "data"),
+    Input("hosteleria-sub-tab-store", "data"),
 )
-def update_page(franja_selected, selected_partidos):
-    """Actualiza todas las gráficas según la franja seleccionada o los partidos individuales."""
+def update_page(franja_selected, selected_partidos, sub_tab):
+    """Actualiza el contenido según la franja, partidos y sub-tab seleccionados."""
     if franja_selected is None:
         franja_selected = "GLOBAL"
+    if sub_tab is None:
+        sub_tab = "EVOLUTIVO"
 
     try:
         df_partido = get_pre_hosteleria_partido()
@@ -1180,10 +1190,6 @@ def update_page(franja_selected, selected_partidos):
             df_prod_cantina = pd.DataFrame()
 
         if df_partido.empty:
-            empty_fig = go.Figure()
-            empty_fig.update_layout(
-                annotations=[{"text": "No hay datos disponibles. Ejecuta sync_data.py primero.", "showarrow": False}]
-            )
             return html.Div("No hay datos disponibles.")
 
         df_partido['schedule'] = pd.to_datetime(df_partido['schedule'], errors='coerce')
@@ -1201,56 +1207,72 @@ def update_page(franja_selected, selected_partidos):
         if df_actual.empty:
             return html.Div("No hay datos para la temporada actual.")
 
-        # =====================================================================
-        # MODO ANÁLISIS INDIVIDUAL: filtra por partidos seleccionados
-        # =====================================================================
-        is_individual = bool(selected_partidos)
-        if is_individual:
-            df_actual_base = df_actual[df_actual['id_partido'].isin(selected_partidos)]
-            if df_actual_base.empty:
+        # =================================================================
+        # Determinar el subconjunto de datos según franja/individual
+        # =================================================================
+        hora_filter = None
+        n_partidos = len(df_actual)
+
+        if franja_selected == "INDIVIDUAL" and selected_partidos:
+            df_base = df_actual[df_actual['id_partido'].isin(selected_partidos)]
+            if df_base.empty:
                 return html.Div(
                     "No hay datos para los partidos seleccionados.",
                     style={"padding": "40px", "textAlign": "center", "color": "#888"}
                 )
-            # Filtrar tablas de producto/cantina/metodo por id_partido
-            if 'id_partido' in df_producto.columns:
-                df_prod_f = df_producto[df_producto['id_partido'].isin(selected_partidos)]
-            else:
-                df_prod_f = df_producto
-            if 'id_partido' in df_cantina.columns:
-                df_cant_f = df_cantina[df_cantina['id_partido'].isin(selected_partidos)]
-            else:
-                df_cant_f = df_cantina
-            if not df_prod_cantina.empty and 'id_partido' in df_prod_cantina.columns:
-                df_pc_f = df_prod_cantina[df_prod_cantina['id_partido'].isin(selected_partidos)]
-            else:
-                df_pc_f = df_prod_cantina
-            df_metodo_f = df_metodo[
-                (df_metodo['temporada'] == 'actual') &
-                (df_metodo['id_partido'].isin(selected_partidos))
-            ] if 'id_partido' in df_metodo.columns else df_metodo[df_metodo['temporada'] == 'actual']
+            n_partidos = len(df_base)
+            # Filtrar tablas por id_partido
+            df_prod_f = df_producto[df_producto['id_partido'].isin(selected_partidos)] if 'id_partido' in df_producto.columns else df_producto
+            df_cant_f = df_cantina[df_cantina['id_partido'].isin(selected_partidos)] if 'id_partido' in df_cantina.columns else df_cantina
+            df_pc_f = df_prod_cantina[df_prod_cantina['id_partido'].isin(selected_partidos)] if (not df_prod_cantina.empty and 'id_partido' in df_prod_cantina.columns) else df_prod_cantina
+            df_metodo_f = df_metodo[(df_metodo['temporada'] == 'actual') & (df_metodo['id_partido'].isin(selected_partidos))] if 'id_partido' in df_metodo.columns else df_metodo[df_metodo['temporada'] == 'actual']
+            is_individual = True
+        elif franja_selected in FRANJAS:
+            franja_info = FRANJAS[franja_selected]
+            horas_franja = franja_info['horas']
+            df_base = df_actual[df_actual['hora_exacta'].isin(horas_franja)]
+            if df_base.empty:
+                return html.Div(f"No hay partidos disputados en franja {franja_info['label']}.")
+            n_partidos = len(df_base)
+            hora_filter = horas_franja
+            df_prod_f = df_producto
+            df_cant_f = df_cantina
+            df_pc_f = df_prod_cantina
+            df_metodo_f = df_metodo[df_metodo['temporada'] == 'actual']
+            is_individual = False
+        else:
+            # GLOBAL
+            df_base = df_actual
+            n_partidos = len(df_actual)
+            df_prod_f = df_producto
+            df_cant_f = df_cantina
+            df_pc_f = df_prod_cantina
+            df_metodo_f = df_metodo[df_metodo['temporada'] == 'actual']
+            is_individual = False
 
-            # KPIs (sin comparativa, sólo partidos seleccionados)
-            total_pedidos_i = df_actual_base['n_pedidos'].sum()
-            total_rec_i = df_actual_base['recaudacion_total'].sum()
+        # =================================================================
+        # Construir KPIs (siempre se muestran en EVOLUTIVO)
+        # =================================================================
+        if franja_selected == "INDIVIDUAL" and selected_partidos:
+            # KPIs sin comparativa
+            total_pedidos_i = df_base['n_pedidos'].sum()
+            total_rec_i = df_base['recaudacion_total'].sum()
             ticket_medio_i = total_rec_i / total_pedidos_i if total_pedidos_i > 0 else 0
-            prom_pedidos_i = df_actual_base['n_pedidos'].mean()
-            rec_promedio_i = df_actual_base['recaudacion_total'].mean()
-
-            # Ingreso por asistente (individual)
+            prom_pedidos_i = df_base['n_pedidos'].mean()
+            rec_promedio_i = df_base['recaudacion_total'].mean()
             ingreso_asist_i = 0
             if not df_asistencia.empty:
-                df_m = df_actual_base.merge(
+                df_m = df_base.merge(
                     df_asistencia[['id_partido', 'total_espectadores']], on='id_partido', how='left'
                 ).dropna(subset=['total_espectadores'])
                 total_esp_i = df_m['total_espectadores'].sum()
                 ingreso_asist_i = (df_m['recaudacion_total'].sum() / total_esp_i) if total_esp_i > 0 else 0
 
-            rivales_label = ', '.join(df_actual_base.sort_values('schedule')['t2_name'].tolist())
+            rivales_label = ', '.join(df_base.sort_values('schedule')['t2_name'].tolist())
             banner = html.Div(
                 html.Span([
-                    html.Strong(f"ANÁLISIS INDIVIDUAL — "),
-                    f"{len(df_actual_base)} partido{'s' if len(df_actual_base) != 1 else ''}: {rivales_label}"
+                    html.Strong("ANÁLISIS INDIVIDUAL — "),
+                    f"{len(df_base)} partido{'s' if len(df_base) != 1 else ''}: {rivales_label}"
                 ]),
                 style={
                     "background": "#e8f0fa", "border": "1px solid #1a3a5c",
@@ -1259,16 +1281,14 @@ def update_page(franja_selected, selected_partidos):
                     "color": "#1a3a5c", "fontFamily": "Montserrat, sans-serif"
                 }
             )
-
             TT = {
                 'pedidos': "Nº total de pedidos en los ambigús para los partidos seleccionados.",
                 'prom_ped': "Media de pedidos por partido (Total Pedidos ÷ Nº Partidos seleccionados).",
                 'ticket': "Gasto medio por pedido (Recaudación Total ÷ Total Pedidos).",
-                'rec_total': "Suma de ingresos de hostelería (precio × cantidad). Se excluyen reembolsos y pagos pendientes.",
+                'rec_total': "Suma de ingresos de hostelería. Se excluyen reembolsos y pagos pendientes.",
                 'rec_prom': "Media de recaudación por partido (Recaudación Total ÷ Nº Partidos).",
-                'ingreso_asist': "Recaudación total hostelería ÷ Total espectadores. Indica el gasto medio en ambigús por cada espectador.",
+                'ingreso_asist': "Recaudación total hostelería ÷ Total espectadores.",
             }
-
             kpis = html.Div([
                 banner,
                 html.Div([
@@ -1276,43 +1296,40 @@ def update_page(franja_selected, selected_partidos):
                     create_kpi_card(prom_pedidos_i, None, "Promedio Pedidos", tooltip=TT['prom_ped']),
                     create_kpi_card(ticket_medio_i, None, "Ticket Medio", "euros", tooltip=TT['ticket']),
                     create_kpi_card(total_rec_i, None, "Recaudación Total", "euros", tooltip=TT['rec_total']),
-                    create_kpi_card(rec_promedio_i, None, "Recaudación Promedio", "euros", tooltip=TT['rec_prom']),
-                    create_kpi_card(ingreso_asist_i, None, "Ingreso por Asistente", "euros", tooltip=TT['ingreso_asist']),
+                    create_kpi_card(rec_promedio_i, None, "Recaudación Promedio", "euros", tooltip=TT['rec_prom'], tooltip_pos="pos-left"),
+                    create_kpi_card(ingreso_asist_i, None, "Ingreso por Asistente", "euros", tooltip=TT['ingreso_asist'], tooltip_pos="pos-left", decimals=2),
                 ], className="kpis-row"),
             ])
-
-            fig_rec = build_fig_recaudacion(df_actual_base)
-            fig_prod = build_fig_productos(df_prod_f, df_prod_cantina=df_pc_f)
-            fig_cant = build_fig_cantinas(df_cant_f, df_prod_cantina=df_pc_f)
-            fig_rec_hora = build_fig_recaudacion_media_hora(df_actual_base)
-            fig_ticket_hora = build_fig_ticket_medio_hora(df_actual_base)
-            fig_ticket_metodo = build_fig_ticket_medio_metodo(df_metodo_f)
-            fig_pct_metodo = build_fig_metodo_pago_pie(df_metodo_f)
-
-            return create_global_content(kpis, fig_rec, fig_prod, fig_cant,
-                                         fig_rec_hora, fig_ticket_hora, fig_ticket_metodo,
-                                         fig_pct_metodo)
-
-        # =====================================================================
-        # VISTA GLOBAL
-        # =====================================================================
-        if franja_selected == "GLOBAL":
-            # KPIs con comparativa temporada anterior
+        elif franja_selected in FRANJAS:
+            # KPIs franja vs media global
+            media_pedidos = df_actual['n_pedidos'].mean()
+            media_recaudacion = df_actual['recaudacion_total'].mean()
+            media_ticket = (df_actual['recaudacion_total'].sum() / df_actual['n_pedidos'].sum()) if df_actual['n_pedidos'].sum() > 0 else 0
+            pedidos_franja = df_base['n_pedidos'].mean()
+            recaudacion_franja = df_base['recaudacion_total'].mean()
+            ticket_franja = (df_base['recaudacion_total'].sum() / df_base['n_pedidos'].sum()) if df_base['n_pedidos'].sum() > 0 else 0
+            TT_F = {
+                'pedidos': "Media de pedidos por partido en partidos de esta franja horaria.",
+                'ticket': "Gasto medio por pedido en partidos de esta franja horaria.",
+                'rec': "Media de recaudación por partido en esta franja horaria.",
+            }
+            kpis = html.Div([
+                create_kpi_card_hora(pedidos_franja, f"Pedidos Medio ({n_partidos} partidos)", media_pedidos, tooltip=TT_F['pedidos']),
+                create_kpi_card_hora(ticket_franja, "Ticket Medio", media_ticket, "euros", tooltip=TT_F['ticket']),
+                create_kpi_card_hora(recaudacion_franja, "Recaudación Media", media_recaudacion, "euros", tooltip=TT_F['rec']),
+            ], className="kpis-row")
+        else:
+            # GLOBAL KPIs con comparativa temporada anterior
             total_pedidos = df_actual['n_pedidos'].sum()
             total_recaudacion = df_actual['recaudacion_total'].sum()
             ticket_medio = total_recaudacion / total_pedidos if total_pedidos > 0 else 0
-
-            n_partidos_global = len(df_actual)
             promedio_pedidos = df_actual['n_pedidos'].mean()
             recaudacion_promedio = df_actual['recaudacion_total'].mean()
-
             total_pedidos_ant = df_anterior['n_pedidos'].sum()
             total_recaudacion_ant = df_anterior['recaudacion_total'].sum()
             ticket_medio_ant = total_recaudacion_ant / total_pedidos_ant if total_pedidos_ant > 0 else 0
             promedio_pedidos_ant = df_anterior['n_pedidos'].mean() if len(df_anterior) > 0 else 0
             recaudacion_promedio_ant = df_anterior['recaudacion_total'].mean() if len(df_anterior) > 0 else 0
-
-            # Ingreso por asistente
             ingreso_asist, ingreso_asist_ant = 0, 0
             if not df_asistencia.empty:
                 df_m = df_actual.merge(
@@ -1325,82 +1342,45 @@ def update_page(franja_selected, selected_partidos):
                 ).dropna(subset=['total_espectadores'])
                 t_esp_ant = df_m_ant['total_espectadores'].sum()
                 ingreso_asist_ant = (df_m_ant['recaudacion_total'].sum() / t_esp_ant) if t_esp_ant > 0 else 0
-
             TT = {
-                'pedidos': "Nº total de pedidos realizados en los ambigús del estadio durante todos los partidos de la temporada.",
-                'prom_ped': "Media de pedidos por partido. Cálculo: Total Pedidos ÷ Nº Partidos disputados.",
-                'ticket': "Gasto medio por pedido. Cálculo: Recaudación Total ÷ Total Pedidos.",
-                'rec_total': "Suma de ingresos de hostelería (precio × cantidad) de todos los partidos. Se excluyen reembolsos y pagos pendientes.",
-                'rec_prom': "Media de recaudación por partido. Cálculo: Recaudación Total ÷ Nº Partidos disputados.",
-                'ingreso_asist': "Gasto medio en ambigús por cada espectador. Cálculo: Recaudación total hostelería ÷ Total espectadores.",
+                'pedidos': "Nº total de pedidos realizados en los ambigús del estadio.",
+                'prom_ped': "Media de pedidos por partido. Total Pedidos ÷ Nº Partidos.",
+                'ticket': "Gasto medio por pedido. Recaudación Total ÷ Total Pedidos.",
+                'rec_total': "Suma de ingresos de hostelería de todos los partidos.",
+                'rec_prom': "Media de recaudación por partido.",
+                'ingreso_asist': "Gasto medio hostelería por espectador.",
             }
-
             kpis = html.Div([
                 create_kpi_card(total_pedidos, total_pedidos_ant, "Total Pedidos", tooltip=TT['pedidos']),
                 create_kpi_card(promedio_pedidos, promedio_pedidos_ant, "Promedio Pedidos", tooltip=TT['prom_ped']),
                 create_kpi_card(ticket_medio, ticket_medio_ant, "Ticket Medio", "euros", tooltip=TT['ticket']),
                 create_kpi_card(total_recaudacion, total_recaudacion_ant, "Recaudación Total", "euros", tooltip=TT['rec_total']),
-                create_kpi_card(recaudacion_promedio, recaudacion_promedio_ant, "Recaudación Promedio", "euros", tooltip=TT['rec_prom']),
-                create_kpi_card(ingreso_asist, ingreso_asist_ant, "Ingreso por Asistente", "euros", tooltip=TT['ingreso_asist']),
+                create_kpi_card(recaudacion_promedio, recaudacion_promedio_ant, "Recaudación Promedio", "euros", tooltip=TT['rec_prom'], tooltip_pos="pos-left"),
+                create_kpi_card(ingreso_asist, ingreso_asist_ant, "Ingreso por Asistente", "euros", tooltip=TT['ingreso_asist'], tooltip_pos="pos-left", decimals=2),
             ], className="kpis-row")
 
-            df_metodo_actual = df_metodo[df_metodo['temporada'] == 'actual']
-            fig_rec = build_fig_recaudacion(df_actual)
-            fig_prod = build_fig_productos(df_producto, df_prod_cantina=df_prod_cantina)
-            fig_cant = build_fig_cantinas(df_cantina, df_prod_cantina=df_prod_cantina)
-            fig_rec_hora = build_fig_recaudacion_media_hora(df_actual)
-            fig_ticket_hora = build_fig_ticket_medio_hora(df_actual)
-            fig_ticket_metodo = build_fig_ticket_medio_metodo(df_metodo_actual)
-            fig_pct_metodo = build_fig_metodo_pago_pie(df_metodo_actual)
+        # =================================================================
+        # Renderizar según sub-tab seleccionada
+        # =================================================================
+        if sub_tab == "EVOLUTIVO":
+            fig_rec = build_fig_recaudacion(df_base)
+            fig_rec_hora = build_fig_recaudacion_media_hora(df_base)
+            fig_ticket_hora = build_fig_ticket_medio_hora(df_base)
+            return build_evolutivo_content(kpis, fig_rec, fig_rec_hora, fig_ticket_hora)
 
-            return create_global_content(kpis, fig_rec, fig_prod, fig_cant,
-                                         fig_rec_hora, fig_ticket_hora, fig_ticket_metodo,
-                                         fig_pct_metodo)
+        elif sub_tab == "METODOS":
+            fig_ticket_metodo = build_fig_ticket_medio_metodo(df_metodo_f)
+            fig_pct_metodo = build_fig_metodo_pago_pie(df_metodo_f)
+            return build_metodos_content(fig_ticket_metodo, fig_pct_metodo)
 
-        # =====================================================================
-        # VISTA POR FRANJA
-        # =====================================================================
+        elif sub_tab == "DESGLOSE":
+            fig_prod = build_fig_productos(df_prod_f, hora_filter, df_pc_f)
+            fig_barras = build_fig_promedio_stores(df_cant_f, n_partidos, 'Barra', hora_filter, df_pc_f)
+            fig_palcos = build_fig_promedio_stores(df_cant_f, n_partidos, 'Palco', hora_filter, df_pc_f)
+            return build_desglose_content(fig_prod, fig_barras, fig_palcos)
+
         else:
-            franja_info = FRANJAS.get(franja_selected)
-            if not franja_info:
-                return html.Div(f"Franja '{franja_selected}' no reconocida.")
-
-            horas_franja = franja_info['horas']
-            df_franja = df_actual[df_actual['hora_exacta'].isin(horas_franja)]
-
-            if df_franja.empty:
-                return html.Div(f"No hay partidos disputados en franja {franja_info['label']}.")
-
-            # Medias globales para comparativa
-            media_pedidos = df_actual['n_pedidos'].mean()
-            media_recaudacion = df_actual['recaudacion_total'].mean()
-            media_ticket = (df_actual['recaudacion_total'].sum() / df_actual['n_pedidos'].sum()) if df_actual['n_pedidos'].sum() > 0 else 0
-
-            # KPIs de esta franja vs media global (promedios)
-            pedidos_franja = df_franja['n_pedidos'].mean()
-            recaudacion_franja = df_franja['recaudacion_total'].mean()
-            ticket_franja = (df_franja['recaudacion_total'].sum() / df_franja['n_pedidos'].sum()) if df_franja['n_pedidos'].sum() > 0 else 0
-            n_partidos_franja = len(df_franja)
-
-            TT_F = {
-                'pedidos': "Media de pedidos por partido en partidos de esta franja horaria.",
-                'ticket': "Gasto medio por pedido en partidos de esta franja horaria.",
-                'rec': "Media de recaudación por partido en esta franja horaria.",
-            }
-            kpis = html.Div([
-                create_kpi_card_hora(pedidos_franja, f"Pedidos Medio ({n_partidos_franja} partidos)", media_pedidos, tooltip=TT_F['pedidos']),
-                create_kpi_card_hora(ticket_franja, "Ticket Medio", media_ticket, "euros", tooltip=TT_F['ticket']),
-                create_kpi_card_hora(recaudacion_franja, "Recaudación Media", media_recaudacion, "euros", tooltip=TT_F['rec']),
-            ], className="kpis-row")
-
-            # Gráficas
-            fig_rec = build_fig_recaudacion(df_franja)
-            fig_cant = build_fig_cantinas(df_cantina, horas_franja, df_prod_cantina)
-            fig_beb = build_fig_bebidas(df_producto, horas_franja, n_partidos_franja, df_prod_cantina)
-            fig_com = build_fig_comestibles(df_producto, horas_franja, n_partidos_franja, df_prod_cantina)
-
-            return create_franja_content(kpis, fig_rec, fig_cant,
-                                         fig_beb, fig_com)
+            return html.Div("Sub-tab no reconocida.")
 
     except Exception as e:
         print(f"Error en hosteleria: {e}")

@@ -936,6 +936,18 @@ body {
     border-color: transparent transparent var(--dark-blue) transparent;
 }
 
+.kpi-tooltip-box.pos-left {
+    left: auto;
+    right: 0;
+    transform: translateX(10%);
+}
+
+.kpi-tooltip-box.pos-left::after {
+    left: auto;
+    right: 14px;
+    transform: translateX(50%);
+}
+
 .kpi-tooltip-wrapper:hover .kpi-tooltip-box {
     visibility: visible;
     opacity: 1;
@@ -1193,4 +1205,3 @@ body {
         flex-direction: column;
     }
 }
-
