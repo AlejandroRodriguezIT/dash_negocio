@@ -24,7 +24,7 @@ app = dash.Dash(
     pages_folder="pages"
 )
 
-app.title = "Inteligencia de Negocio - RC Deportivo"
+app.title = "Panel MatchDay - RC Deportivo"
 server = app.server
 
 # =============================================================================
@@ -99,7 +99,7 @@ def create_header():
                 children=[
                     html.Img(src="/assets/escudo.png", className="header-logo"),
                     html.Div([
-                        html.H1("Inteligencia de Negocio", className="header-title"),
+                        html.H1("Panel MatchDay", className="header-title"),
                         html.P("RC Deportivo - Sistema de gestión integral", className="header-subtitle"),
                     ])
                 ]

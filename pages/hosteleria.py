@@ -269,9 +269,9 @@ def create_kpi_card_hora(valor, label, media_global, formato="numero", tooltip=N
                                 "justifyContent": "center", "gap": "5px"})
 
     if formato == "euros":
-        texto = f"{fmt(valor)}€"
+        texto = f"{fmt(valor, decimals)}€"
     else:
-        texto = fmt(valor)
+        texto = fmt(valor, decimals)
 
     if media_global > 0:
         pct_diff = ((valor - media_global) / media_global) * 100
@@ -646,7 +646,7 @@ def _get_top_products_per_cantina(df_prod_cantina, store_name, hora_filter=None,
 
 
 def build_fig_promedio_stores(df_cantina, n_partidos, store_type='Barra',
-                               hora_filter=None, df_prod_cantina=None):
+                              hora_filter=None, df_prod_cantina=None):
     """Gráfica de ingreso promedio por punto de venta.
     store_type: 'Barra' o 'Palco' para filtrar por prefijo de store_name."""
     n = max(n_partidos, 1)
@@ -799,7 +799,7 @@ def build_fig_bebidas(df_producto, hora_filter=None, n_partidos=1, df_prod_canti
 
 
 def build_fig_comestibles(df_producto, hora_filter=None, n_partidos=1, df_prod_cantina=None):
-    """Top 10 comestibles más consumidas (promedio por partido)."""
+    """Top 10 comestibles más consumidos (promedio por partido)."""
     return _build_fig_categoria(df_producto, 'comestible', hora_filter, '#18395c', 'Comestibles',
                                  n_partidos, df_prod_cantina)
 
@@ -1134,13 +1134,12 @@ def update_franja_store(*args):
 
 @callback(
     Output("modal-hosteleria-overlay", "className", allow_duplicate=True),
-    Input("hosteleria-franja-store", "data"),
-    State("hosteleria-selected-partidos", "data"),
+    Input("btn-franja-INDIVIDUAL", "n_clicks"),
     prevent_initial_call=True,
 )
-def open_modal_on_individual(franja, selected):
-    """Abre el modal cuando se selecciona INDIVIDUAL y no hay partidos seleccionados."""
-    if franja == "INDIVIDUAL" and not selected:
+def open_modal_on_individual(n_clicks):
+    """Abre el modal siempre que se clicke el botón de ANÁLISIS INDIVIDUAL."""
+    if n_clicks:
         return "modal-overlay visible"
     return no_update
 

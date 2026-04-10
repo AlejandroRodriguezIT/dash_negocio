@@ -299,12 +299,12 @@ def create_legend_with_tooltips():
         {
             "label": "Espectadores Totales",
             "color": "#3498db",
-            "tooltip": "Suma de abonados asistentes (accesos por torno) + entradas vendidas al público general + invitaciones, agregado por zonas del estadio."
+            "tooltip": "Suma de abonados asistentes (accesos por torno) + entradas vendidas al p\u00fablico general + invitaciones, agregado por zonas del estadio."
         },
         {
             "label": "Abonados Asistentes",
             "color": "#e74c3c",
-            "tooltip": "Nº de abonados únicos que accedieron al estadio (registro de tornos). Se excluyen abonos con localidad ‘SIN ASIENTO’, ‘CERO’ y ‘AREA 1906’."
+            "tooltip": "N\u00ba de abonados \u00fanicos que accedieron al estadio (registro de tornos). Se excluyen abonos con localidad \u2018SIN ASIENTO\u2019, \u2018CERO\u2019 y \u2018AREA 1906\u2019."
         },
     ]
     return html.Div([
@@ -533,7 +533,7 @@ def update_page(_):
         fig3.add_trace(go.Scatter(
             x=list(range(len(rivales_g3))),
             y=datos_grafica['total_espectadores'],
-            mode='markers+lines+text',
+            mode='lines+markers+text',
             name='Espectadores Totales',
             line=dict(color='#3498db', width=2),
             marker=dict(size=8),
@@ -544,7 +544,7 @@ def update_page(_):
         fig3.add_trace(go.Scatter(
             x=list(range(len(rivales_g3))),
             y=datos_grafica['abonados_asistentes'],
-            mode='markers+lines+text',
+            mode='lines+markers+text',
             name='Abonados Asistentes',
             line=dict(color='#e74c3c', width=2),
             marker=dict(size=8),
