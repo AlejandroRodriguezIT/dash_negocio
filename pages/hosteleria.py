@@ -1134,13 +1134,12 @@ def update_franja_store(*args):
 
 @callback(
     Output("modal-hosteleria-overlay", "className", allow_duplicate=True),
-    Input("hosteleria-franja-store", "data"),
-    State("hosteleria-selected-partidos", "data"),
+    Input("btn-franja-INDIVIDUAL", "n_clicks"),
     prevent_initial_call=True,
 )
-def open_modal_on_individual(franja, selected):
-    """Abre el modal cuando se selecciona INDIVIDUAL y no hay partidos seleccionados."""
-    if franja == "INDIVIDUAL" and not selected:
+def open_modal_on_individual(n_clicks):
+    """Abre el modal siempre que se clicke el botón de ANÁLISIS INDIVIDUAL."""
+    if n_clicks:
         return "modal-overlay visible"
     return no_update
 
