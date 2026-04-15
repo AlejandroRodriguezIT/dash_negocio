@@ -8,7 +8,7 @@ from dash import html, dcc, callback, Output, Input
 import pandas as pd
 from database import (
     get_pre_entradas_partido, get_pre_hosteleria_partido,
-    get_pre_deportiendas_kpis,
+    get_pre_deportiendas_kpis, get_museo_kpis,
 )
 
 dash.register_page(__name__, path="/", name="Inicio")
@@ -79,7 +79,16 @@ def _load_home_data():
     except Exception:
         rec_tiendas = 0
 
-    return rec_estadio, rec_hosteleria, rec_tiendas
+    try:
+        df_museo = get_museo_kpis()
+        if not df_museo.empty:
+            rec_museo = float(df_museo.iloc[0]['ingresos_netos'])
+        else:
+            rec_museo = 0
+    except Exception:
+        rec_museo = 0
+
+    return rec_estadio, rec_hosteleria, rec_tiendas, rec_museo
 
 
 def _build_card(cfg, data):
@@ -89,8 +98,8 @@ def _build_card(cfg, data):
         return create_recaudacion_card(cfg["title"], f"{fmt(data['estadio'])}€",
                                        color="#18395c", is_active=True, href=cfg["href"])
     elif key == "museo":
-        return create_recaudacion_card(cfg["title"], "EN DESARROLLO",
-                                       color="#999", is_active=False, href=cfg["href"])
+        return create_recaudacion_card(cfg["title"], f"{fmt(data['museo'])}€",
+                                       color="#18395c", is_active=True, href=cfg["href"])
     elif key == "deportiendas":
         return create_recaudacion_card(cfg["title"], f"{fmt(data['deportiendas'])}€",
                                        color="#18395c", is_active=True, href=cfg["href"])
@@ -112,8 +121,8 @@ layout = html.Div(
 )
 def update_home_cards(session):
     """Muestra solo las tarjetas a las que el usuario tiene acceso."""
-    rec_estadio, rec_hosteleria, rec_tiendas = _load_home_data()
-    data = {"estadio": rec_estadio, "hosteleria": rec_hosteleria, "deportiendas": rec_tiendas}
+    rec_estadio, rec_hosteleria, rec_tiendas, rec_museo = _load_home_data()
+    data = {"estadio": rec_estadio, "hosteleria": rec_hosteleria, "deportiendas": rec_tiendas, "museo": rec_museo}
 
     # Determinar permisos del usuario
     if session and session.get('authenticated'):

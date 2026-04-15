@@ -318,6 +318,61 @@ def get_partidos_local(temporada: str = '2025'):
 
 
 # =============================================================================
+# MUSEO RCD
+# =============================================================================
+
+def get_museo_kpis():
+    """KPIs globales del museo."""
+    return query_to_df("SELECT * FROM agg_museo_kpis WHERE id = 1")
+
+
+def get_museo_diario():
+    """Agregación diaria del museo por tipo de producto."""
+    return query_to_df("SELECT * FROM agg_museo_diario ORDER BY fecha")
+
+
+def get_museo_producto():
+    """Agregación por tipo de producto."""
+    return query_to_df("SELECT * FROM agg_museo_producto")
+
+
+def get_museo_horario():
+    """Agregación por franja horaria."""
+    return query_to_df("SELECT * FROM agg_museo_horario ORDER BY hora_tour")
+
+
+def get_museo_dia_semana():
+    """Agregación por día de la semana."""
+    return query_to_df("SELECT * FROM agg_museo_dia_semana ORDER BY dia_num")
+
+
+def get_museo_canal():
+    """Agregación por canal (plataforma)."""
+    return query_to_df("SELECT * FROM agg_museo_canal ORDER BY pedidos DESC")
+
+
+def get_museo_metodo_pago():
+    """Agregación por método de pago."""
+    return query_to_df("SELECT * FROM agg_museo_metodo_pago ORDER BY pedidos DESC")
+
+
+def get_museo_heatmap():
+    """Heatmap hora × día de semana."""
+    return query_to_df("SELECT * FROM agg_museo_heatmap ORDER BY dia_num, hora_tour")
+
+
+def get_museo_partidos_local():
+    """Partidos locales del RC Deportivo desde apertura del museo (2026-02-18)."""
+    return query_to_df("""
+        SELECT DATE(schedule) as fecha, t2_name as rival
+        FROM slv_partidos
+        WHERE t1_name = 'RC Deportivo'
+        AND schedule >= '2026-02-18'
+        ORDER BY schedule
+    """)
+
+
+# =============================================================================
 # AUTENTICACIÓN
 # =============================================================================
 

@@ -259,7 +259,7 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", toolt
     ], className="kpi-card")
 
 
-def create_kpi_card_hora(valor, label, media_global, formato="numero", tooltip=None):
+def create_kpi_card_hora(valor, label, media_global, formato="numero", tooltip=None, decimals=0):
     """KPI card para vista por hora, comparando contra media global."""
     label_children = [label]
     if tooltip:
