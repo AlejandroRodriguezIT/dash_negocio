@@ -408,6 +408,18 @@ def build_fig_recaudacion(df_actual):
     rivales = df_actual['t2_name'].tolist()
     results = df_actual['result'].tolist()
 
+    # Enriquecer con total_espectadores para calcular ingreso por asistente
+    try:
+        df_asi = get_pre_asistencia_partido()[['id_partido', 'total_espectadores']]
+        espectadores_map = dict(zip(df_asi['id_partido'], df_asi['total_espectadores']))
+    except Exception:
+        espectadores_map = {}
+
+    ingreso_por_asistente = []
+    for id_p, rec in zip(df_actual['id_partido'], df_actual['recaudacion_total']):
+        esp = espectadores_map.get(id_p, 0) or 0
+        ingreso_por_asistente.append(rec / esp if esp else 0)
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=list(range(len(rivales))),
@@ -419,12 +431,14 @@ def build_fig_recaudacion(df_actual):
         hovertemplate=(
             '<b>Pedidos:</b> %{customdata[0]}<br>'
             '<b>Ticket medio:</b> %{customdata[1]}€<br>'
-            '<b>Productos vendidos:</b> %{customdata[2]}'
+            '<b>Ingreso por asistente:</b> %{customdata[2]}€<br>'
+            '<b>Productos vendidos:</b> %{customdata[3]}'
             '<extra></extra>'
         ),
         customdata=list(zip(
             [fmt(v) for v in df_actual['n_pedidos']],
             [f"{v:.2f}" for v in df_actual['ticket_medio']],
+            [f"{v:.2f}" for v in ingreso_por_asistente],
             [fmt(v) for v in df_actual['n_productos']],
         ))
     ))
@@ -697,13 +711,79 @@ def build_fig_promedio_stores(df_cantina, n_partidos, store_type='Barra',
     ))
 
     max_x = agg['recaudacion_avg'].max() * 1.25 if len(agg) > 0 else 100
-    h = max(350, len(agg) * 35)
+    h = max(380, len(agg) * 48)
 
     fig.update_layout(
         height=h,
-        margin=dict(t=10, b=20, l=120, r=40),
+        bargap=0.38,
+        margin=dict(t=10, b=20, l=140, r=40),
         xaxis=dict(showticklabels=False, range=[0, max_x]),
-        yaxis=dict(tickfont=dict(size=10, family='Montserrat'))
+        yaxis=dict(tickfont=dict(size=11, family='Montserrat'))
+    )
+    return fig
+
+
+def build_fig_productos_por_store(df_prod_cantina, n_partidos, store_name, hora_filter=None, top_n=10):
+    """Gráfica horizontal: unidades vendidas por producto en una barra/palco concreto."""
+    if df_prod_cantina is None or df_prod_cantina.empty or not store_name:
+        fig = go.Figure()
+        fig.update_layout(annotations=[{"text": "Sin datos", "showarrow": False}], height=380)
+        return fig
+
+    df = df_prod_cantina[df_prod_cantina['store_name'] == store_name].copy()
+    if hora_filter and hora_filter != 'GLOBAL':
+        if isinstance(hora_filter, list):
+            df = df[df['hora_exacta'].isin(hora_filter)]
+        else:
+            df = df[df['hora_exacta'] == hora_filter]
+
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(annotations=[{"text": "Sin datos para este punto de venta",
+                                         "showarrow": False}], height=380)
+        return fig
+
+    df['product_name'] = df['product_name'].apply(normalizar_producto)
+    # Excluir productos no relevantes.
+    # "solidario" cubre también "Vaso Dépor Solidario" (el filtro anterior
+    # buscaba la substring exacta "vaso solidario" y no atrapaba esa variante).
+    df = df[~df['product_name'].str.lower().str.contains('solidario|bufanda', na=False)]
+
+    agg = df.groupby('product_name').agg(
+        cantidad=('cantidad', 'sum'),
+        recaudacion=('recaudacion', 'sum'),
+    ).reset_index()
+
+    n = max(n_partidos, 1)
+    agg['cantidad_avg'] = agg['cantidad'] / n
+    agg['recaudacion_avg'] = agg['recaudacion'] / n
+
+    top = agg.nlargest(top_n, 'cantidad_avg').sort_values('cantidad_avg', ascending=True)
+
+    if top.empty:
+        fig = go.Figure()
+        fig.update_layout(annotations=[{"text": "Sin datos", "showarrow": False}], height=380)
+        return fig
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=top['cantidad_avg'],
+        y=top['product_name'],
+        orientation='h',
+        marker_color='#2c5282',
+        text=[f"{v:.1f} uds · {r:.0f}€" for v, r in zip(top['cantidad_avg'], top['recaudacion_avg'])],
+        textposition='outside',
+        textfont=dict(color='#333', size=10, family='Montserrat', weight='bold'),
+        hovertemplate='<b>%{y}</b><br>Unidades: %{x:.1f}<extra></extra>',
+    ))
+    max_x = top['cantidad_avg'].max() * 1.35 if len(top) > 0 else 100
+    h = max(380, len(top) * 48)
+    fig.update_layout(
+        height=h,
+        bargap=0.38,
+        margin=dict(t=10, b=20, l=180, r=80),
+        xaxis=dict(showticklabels=False, range=[0, max_x]),
+        yaxis=dict(tickfont=dict(size=11, family='Montserrat'))
     )
     return fig
 
@@ -1010,9 +1090,16 @@ def build_metodos_content(fig_ticket_metodo, fig_pct_metodo):
     ], className="page-content-container")
 
 
-def build_desglose_content(fig_productos, fig_barras, fig_palcos):
-    """Sub-tab DESGLOSE DE VENTAS: Productos + Barras + Palcos."""
+def build_desglose_content(fig_productos, desglose_data):
+    """Sub-tab DESGLOSE DE VENTAS: Productos (top) + toggle Barras/Palcos (izquierda) + productos de la
+    barra/palco clicada (derecha).
+
+    La figura principal y el panel de productos se renderizan vía callbacks locales que leen
+    los datos almacenados en el `dcc.Store` de la propia sección.
+    """
     return html.Div([
+        # Store con los DataFrames filtrados (df_cantina, df_prod_cantina) + hora_filter + n_partidos
+        dcc.Store(id="desglose-data-store", data=desglose_data),
         html.Div([
             # Top 10 productos (full width)
             html.Div([
@@ -1024,16 +1111,39 @@ def build_desglose_content(fig_productos, fig_barras, fig_palcos):
                                   "textAlign": "center", "marginTop": "2px"})
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
-            # Barras y Palcos (lado a lado)
+            # Fila 2: toggle Barras/Palcos (izquierda) + productos (derecha)
             html.Div([
                 html.Div([
-                    html.H4("Recaudación Promedio por Barra"),
-                    dcc.Graph(figure=fig_barras, config={'displayModeBar': False})
-                ], className="graph-card"),
+                    html.Div([
+                        html.Button("Barras", id="btn-store-barra",
+                                    className="store-toggle-btn active", n_clicks=0),
+                        html.Button("Palcos", id="btn-store-palco",
+                                    className="store-toggle-btn", n_clicks=0),
+                    ], className="store-toggle-row"),
+                    html.H4("Recaudación Promedio por Barra",
+                            id="graph-desglose-main-title"),
+                    dcc.Graph(id="graph-desglose-main",
+                              figure=go.Figure(),
+                              config={'displayModeBar': False})
+                ], className="graph-card graph-card--scrollable"),
                 html.Div([
-                    html.H4("Recaudación Promedio por Palco"),
-                    dcc.Graph(figure=fig_palcos, config={'displayModeBar': False})
-                ], className="graph-card"),
+                    html.H4("Desglose de Productos", id="desglose-products-title"),
+                    html.Div(
+                        "Haz clic en una barra o palco para ver el desglose de productos vendidos",
+                        id="graph-desglose-products-placeholder",
+                        style={"textAlign": "center", "padding": "140px 20px",
+                               "color": "#999", "fontStyle": "italic"}
+                    ),
+                    dcc.Graph(id="graph-desglose-products",
+                              figure=go.Figure(),
+                              config={'displayModeBar': False},
+                              style={"display": "none"}),
+                    html.P("*Se han eliminado las unidades del Vaso Dépor Solidario",
+                           id="graph-desglose-products-note",
+                           style={"display": "none", "fontSize": "0.7rem",
+                                  "color": "#999", "fontStyle": "italic",
+                                  "textAlign": "center", "marginTop": "4px"}),
+                ], className="graph-card graph-card--scrollable"),
             ], className="graphs-row"),
         ], className="graphs-container"),
     ], className="page-content-container")
@@ -1374,9 +1484,20 @@ def update_page(franja_selected, selected_partidos, sub_tab):
 
         elif sub_tab == "DESGLOSE":
             fig_prod = build_fig_productos(df_prod_f, hora_filter, df_pc_f)
-            fig_barras = build_fig_promedio_stores(df_cant_f, n_partidos, 'Barra', hora_filter, df_pc_f)
-            fig_palcos = build_fig_promedio_stores(df_cant_f, n_partidos, 'Palco', hora_filter, df_pc_f)
-            return build_desglose_content(fig_prod, fig_barras, fig_palcos)
+            # Guardar en el Store solo los registros relevantes (Barra/Palco) para no
+            # serializar 14k filas innecesarias de df_prod_cantina.
+            df_pc_relev = df_pc_f[
+                df_pc_f['store_name'].str.startswith(('Barra', 'Palco'))
+            ].copy()
+            hora_val = hora_filter if hora_filter else 'GLOBAL'
+            # hora_filter puede ser str o list; list es JSON-serializable
+            desglose_data = {
+                "df_cantina": df_cant_f.to_dict('records'),
+                "df_prod_cantina": df_pc_relev.to_dict('records'),
+                "n_partidos": int(n_partidos),
+                "hora_filter": hora_val,
+            }
+            return build_desglose_content(fig_prod, desglose_data)
 
         else:
             return html.Div("Sub-tab no reconocida.")
@@ -1386,3 +1507,102 @@ def update_page(franja_selected, selected_partidos, sub_tab):
         import traceback
         traceback.print_exc()
         return html.Div(f"Error: {str(e)}")
+
+
+# =============================================================================
+# CALLBACKS LOCALES DEL SUB-TAB "DESGLOSE DE VENTAS"
+# =============================================================================
+
+_NOTE_HIDDEN = {"display": "none", "fontSize": "0.7rem", "color": "#999",
+                "fontStyle": "italic", "textAlign": "center", "marginTop": "4px"}
+_NOTE_VISIBLE = {"display": "block", "fontSize": "0.7rem", "color": "#999",
+                 "fontStyle": "italic", "textAlign": "center", "marginTop": "4px"}
+_PLACEHOLDER_STYLE = {"textAlign": "center", "padding": "140px 20px",
+                      "color": "#999", "fontStyle": "italic"}
+
+
+@callback(
+    Output("graph-desglose-main", "figure"),
+    Output("graph-desglose-main-title", "children"),
+    Output("btn-store-barra", "className"),
+    Output("btn-store-palco", "className"),
+    Output("graph-desglose-products", "figure", allow_duplicate=True),
+    Output("graph-desglose-products", "style", allow_duplicate=True),
+    Output("graph-desglose-products-placeholder", "style", allow_duplicate=True),
+    Output("desglose-products-title", "children", allow_duplicate=True),
+    Output("graph-desglose-products-note", "style", allow_duplicate=True),
+    Input("btn-store-barra", "n_clicks"),
+    Input("btn-store-palco", "n_clicks"),
+    Input("desglose-data-store", "data"),
+    prevent_initial_call='initial_duplicate',
+)
+def desglose_toggle_store_type(n_barra, n_palco, data):
+    """Maneja el toggle Barras/Palcos y la carga inicial del gráfico principal.
+
+    Al alternar entre Barras y Palcos se reconstruye el gráfico principal y se
+    limpia el panel derecho de productos (ya que el store_name seleccionado
+    anteriormente deja de ser válido en la otra categoría)."""
+    if not data:
+        return (no_update,) * 9
+
+    trigger = ctx.triggered_id if ctx.triggered_id else None
+
+    if trigger == "btn-store-palco":
+        store_type = "Palco"
+    elif trigger == "btn-store-barra":
+        store_type = "Barra"
+    else:
+        store_type = "Barra"
+
+    df_cantina = pd.DataFrame(data.get('df_cantina', []))
+    df_pc = pd.DataFrame(data.get('df_prod_cantina', []))
+    n_partidos = int(data.get('n_partidos', 1))
+    hora_filter = data.get('hora_filter', 'GLOBAL')
+
+    fig_main = build_fig_promedio_stores(df_cantina, n_partidos, store_type, hora_filter, df_pc)
+    title = f"Recaudación Promedio por {store_type}"
+    cls_barra = "store-toggle-btn active" if store_type == "Barra" else "store-toggle-btn"
+    cls_palco = "store-toggle-btn active" if store_type == "Palco" else "store-toggle-btn"
+
+    # Limpiar panel de productos al cambiar de tipo
+    empty_fig = go.Figure()
+
+    return (fig_main, title, cls_barra, cls_palco,
+            empty_fig, {"display": "none"}, _PLACEHOLDER_STYLE,
+            "Desglose de Productos", _NOTE_HIDDEN)
+
+
+@callback(
+    Output("graph-desglose-products", "figure"),
+    Output("graph-desglose-products", "style"),
+    Output("graph-desglose-products-placeholder", "style"),
+    Output("desglose-products-title", "children"),
+    Output("graph-desglose-products-note", "style"),
+    Input("graph-desglose-main", "clickData"),
+    State("desglose-data-store", "data"),
+    prevent_initial_call=True,
+)
+def desglose_show_products_on_click(click_data, data):
+    """Al hacer clic sobre una barra/palco del gráfico principal, muestra a la
+    derecha el desglose de productos vendidos en esa barra/palco."""
+    if not click_data or not data:
+        return (no_update,) * 5
+
+    try:
+        store_name = click_data['points'][0]['y']
+    except (KeyError, IndexError, TypeError):
+        return (no_update,) * 5
+
+    df_pc = pd.DataFrame(data.get('df_prod_cantina', []))
+    n_partidos = int(data.get('n_partidos', 1))
+    hora_filter = data.get('hora_filter', 'GLOBAL')
+
+    fig = build_fig_productos_por_store(df_pc, n_partidos, store_name, hora_filter)
+
+    return (
+        fig,
+        {"display": "block"},
+        {"display": "none"},
+        f"Unidades Vendidas en {store_name}",
+        _NOTE_VISIBLE,
+    )

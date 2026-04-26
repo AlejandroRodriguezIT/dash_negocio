@@ -17,8 +17,63 @@
     --warning-orange: #f39c12;
 }
 
-/* Fuente Montserrat */
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+/* =============================================================================
+   FUENTES CORPORATIVAS OFICIALES (locales)
+   Servidas desde assets/MATERIAL/TIPOGRAFIAS/
+   ============================================================================= */
+
+/* Commissioner Flair — fuente principal (cuerpo + headlines estilo 1) */
+@font-face {
+    font-family: 'Commissioner Flair';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Commissioner-Flair/ttf/CommissionerFlair-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Commissioner Flair';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Commissioner-Flair/ttf/CommissionerFlair-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Commissioner Flair';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Commissioner-Flair/ttf/CommissionerFlair-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Commissioner Flair';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Commissioner-Flair/ttf/CommissionerFlair-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Barlow Condensed — headlines estilo 2 (condensados) */
+@font-face {
+    font-family: 'Barlow Condensed';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Barlow_Condensed/BarlowCondensed-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Barlow Condensed';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Barlow_Condensed/BarlowCondensed-SemiBold.ttf') format('truetype');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Barlow Condensed';
+    src: url('/assets/MATERIAL/TIPOGRAFIAS/Barlow_Condensed/BarlowCondensed-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
 
 /* Reset y base */
 * {
@@ -28,9 +83,48 @@
 }
 
 body {
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'Commissioner Flair', 'Commissioner', sans-serif;
     background-color: var(--light-gray);
     min-height: 100vh;
+}
+
+/* Clase utilitaria para usar Barlow Condensed en headlines condensados */
+.font-condensed,
+.banner-title,
+.escudos-nav-title,
+.ficha-columna-header,
+.ficha-header-rival,
+.ficha-header-resultado,
+.home-card-title,
+.home-card-value,
+.section-title,
+.kpi-value,
+.kpi-value-positive,
+.kpi-value-negative,
+.kpi-value-neutral,
+.ficha-kpi-value,
+.sidebar-title,
+.header-title {
+    font-family: 'Barlow Condensed', 'Commissioner Flair', sans-serif;
+}
+
+/* =============================================================================
+   BANDA CON TÍTULO (usada en el home encima de las 4 tarjetas,
+   y reutilizable en otras secciones)
+   ============================================================================= */
+
+.banner-title {
+    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+    color: var(--white);
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 20px 22px;
+    border-radius: 10px;
+    margin: 0 0 22px 0;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
 }
 
 /* =============================================================================
@@ -71,6 +165,51 @@ body {
     color: var(--white);
     margin: 0;
 }
+
+.sidebar-banner {
+    display: block;
+    height: 40px;
+    width: auto;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+/* =============================================================================
+   DESGLOSE DE VENTAS — TOGGLE BARRAS / PALCOS
+   ============================================================================= */
+
+.store-toggle-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.store-toggle-btn {
+    font-family: 'Barlow Condensed', 'Commissioner Flair', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 24px;
+    border-radius: 6px;
+    border: 2px solid var(--primary-blue);
+    background-color: var(--white);
+    color: var(--primary-blue);
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    min-width: 110px;
+}
+
+.store-toggle-btn:hover {
+    background-color: rgba(26, 58, 92, 0.08);
+}
+
+.store-toggle-btn.active {
+    background-color: var(--primary-blue);
+    color: var(--white);
+}
+
 
 .sidebar-nav {
     flex: 1;
@@ -574,6 +713,17 @@ body {
 
 .graph-card .js-plotly-plot {
     max-height: 380px !important;
+}
+
+/* Variante del contenedor de gráfica con scroll vertical interno: mantiene el
+   tamaño exterior de 380px pero permite al gráfico crecer en altura y
+   desplazarse mediante scroll (usado en el panel de productos por punto de
+   venta del DESGLOSE DE VENTAS). */
+.graph-card--scrollable {
+    overflow-y: auto;
+}
+.graph-card--scrollable .js-plotly-plot {
+    max-height: none !important;
 }
 
 /* Loading Spinner */
@@ -1203,6 +1353,294 @@ body {
     
     .app-container {
         flex-direction: column;
+    }
+}
+
+/* =============================================================================
+   NAVEGADOR DE ESCUDOS — FICHA POST PARTIDO
+   ============================================================================= */
+
+/* Banda azul corporativa con los escudos — home */
+.escudos-nav-section {
+    margin-top: 30px;
+    padding: 28px 22px 24px;
+    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+    border-radius: 10px;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.18);
+}
+
+.escudos-nav-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--white);
+    text-align: center;
+    margin: 0 0 22px 0;
+    text-transform: uppercase;
+}
+
+.escudos-nav-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.escudos-nav-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.escudo-slot-link {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.escudo-slot {
+    width: 78px;
+    height: 78px;
+    border-radius: 50%;
+    background-color: var(--white);
+    border: 3px solid var(--white);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: pointer;
+}
+
+.escudo-slot img {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    transition: filter 0.25s ease;
+}
+
+.escudo-slot--enabled:hover {
+    background-color: var(--primary-blue);
+    border: 3px solid var(--white);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.escudo-slot--disabled {
+    background-color: #4a4a4a;
+    border-color: #4a4a4a;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.escudo-slot--disabled img {
+    filter: grayscale(1) brightness(0.55) opacity(0.55);
+}
+
+.escudo-slot--active {
+    background-color: var(--primary-blue);
+    border: 3px solid var(--white);
+    box-shadow: 0 4px 14px rgba(26, 58, 92, 0.45);
+}
+
+/* Variante horizontal dentro de la ficha post-partido (1 fila) */
+.escudos-nav-ficha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    overflow-x: auto;
+}
+
+.escudos-nav-ficha .escudo-slot-link {
+    flex: 0 0 auto;
+}
+
+.escudos-nav-ficha .escudo-slot {
+    width: 64px;
+    height: 64px;
+}
+
+.escudos-nav-ficha .escudo-slot img {
+    width: 46px;
+    height: 46px;
+}
+
+/* =============================================================================
+   FICHA POST-PARTIDO — CUADRÍCULA 4 COLUMNAS × 2 FILAS
+   ( IDENTIDAD lateral izquierda (2 filas) · 3 verticales arriba · 3 verticales abajo )
+   Diseño tipo ficha rectangular sin scroll vertical.
+   ============================================================================= */
+
+.ficha-grid {
+    display: grid;
+    grid-template-columns: 1.1fr repeat(3, 1fr);
+    grid-template-rows: auto auto;
+    gap: 12px;
+    align-items: stretch;
+}
+
+/* Identidad: primera columna, ocupa las 2 filas */
+.ficha-columna-identidad {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    background-color: var(--white);
+    border-radius: 10px;
+    padding: 22px 18px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+}
+
+.ficha-identidad-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+
+.ficha-header-escudo {
+    width: 130px;
+    height: 130px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.ficha-header-rival {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 1.1;
+}
+
+.ficha-header-fecha {
+    font-size: 0.9rem;
+    color: var(--text-gray);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.ficha-header-resultado {
+    font-size: 2.5rem;
+    font-weight: 700;
+    padding: 10px 32px;
+    border-radius: 10px;
+    min-width: 130px;
+    background-color: var(--light-gray);
+    letter-spacing: 5px;
+    margin-top: 8px;
+}
+
+.ficha-header-resultado--win   { color: var(--success-green); }
+.ficha-header-resultado--loss  { color: var(--danger-red); }
+.ficha-header-resultado--draw  { color: var(--warning-orange); }
+
+/* Cada vertical = una columna */
+.ficha-columna {
+    background-color: var(--white);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Cabecera grande de la vertical — banda azul corporativa */
+.ficha-columna-header {
+    background: linear-gradient(180deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+    color: var(--white);
+    padding: 10px 12px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    line-height: 1.2;
+}
+
+.ficha-columna-body {
+    padding: 10px 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    flex: 1;
+}
+
+/* Tarjeta KPI individual — todas con la misma altura para alinear entre columnas */
+.ficha-kpi {
+    background-color: var(--light-gray);
+    border-radius: 6px;
+    padding: 7px 10px;
+    text-align: center;
+    border: 1px solid #e0e0e0;
+    min-height: 54px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+}
+
+.ficha-kpi-label {
+    font-size: 0.62rem;
+    color: var(--text-gray);
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    line-height: 1.15;
+}
+
+.ficha-kpi-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    line-height: 1.1;
+}
+
+.ficha-kpi-value--muted {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-gray);
+    font-style: italic;
+}
+
+/* Responsive: adaptar columnas según ancho */
+@media (max-width: 1100px) {
+    .ficha-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .ficha-columna-identidad {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        flex-direction: row;
+        justify-content: space-around;
+        text-align: center;
+    }
+}
+@media (max-width: 700px) {
+    .ficha-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .ficha-columna-identidad {
+        flex-direction: column;
+    }
+}
+@media (max-width: 500px) {
+    .ficha-grid {
+        grid-template-columns: 1fr;
     }
 }
 

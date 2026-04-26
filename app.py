@@ -37,7 +37,7 @@ server = app.server
 # 4 = Dépor Hostelería
 
 SECCIONES = {
-    "estadio":      {"permiso": 1, "label": "ESTADIO ABANCA-RIAZOR",
+    "estadio":      {"permiso": 1, "label": "ABANCA-RIAZOR",
                      "icon": "/assets/Indice/Estadio ABANCA-RIAZOR.png",
                      "href": "/estadio/entradas", "id": "nav-estadio"},
     "museo":        {"permiso": 2, "label": "MUSEO RCD",
@@ -65,7 +65,8 @@ def create_login():
             html.Div(
                 className="login-box",
                 children=[
-                    html.Img(src="/assets/ESCUDO-AZUL_RGB-HD.png", className="login-shield"),
+                    html.Img(src="/assets/MATERIAL/ESCUDO-DÉPOR/ESCUDO-AZUL_RGB.svg",
+                             className="login-shield"),
                     html.H2("Iniciar Sesión", className="login-title"),
                     dcc.Input(
                         id="login-user",
@@ -97,7 +98,8 @@ def create_header():
             html.Div(
                 className="header-content",
                 children=[
-                    html.Img(src="/assets/escudo.png", className="header-logo"),
+                    html.Img(src="/assets/MATERIAL/ESCUDO-DÉPOR/ESCUDO-BLANCO_RGB.svg",
+                             className="header-logo"),
                     html.Div([
                         html.H1("Panel MatchDay", className="header-title"),
                         html.P("RC Deportivo - Sistema de gestión integral", className="header-subtitle"),
@@ -131,7 +133,10 @@ app.layout = html.Div([
                 children=[
                     html.Div(
                         className="sidebar-header",
-                        children=[html.H2("DEPORTIVO", className="sidebar-title")]
+                        children=[
+                            html.Img(src="/assets/MATERIAL/Banner-RCDEPORTIVO/RCDEPORTIVO-BLANCO-RGB.svg",
+                                     className="sidebar-banner", alt="RC Deportivo"),
+                        ]
                     ),
                     html.Nav(className="sidebar-nav", id="sidebar-nav"),
                     html.Div(

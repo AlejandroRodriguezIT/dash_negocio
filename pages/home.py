@@ -9,7 +9,9 @@ import pandas as pd
 from database import (
     get_pre_entradas_partido, get_pre_hosteleria_partido,
     get_pre_deportiendas_kpis, get_museo_kpis,
+    get_ficha_rivales_temp_actual,
 )
+from components import build_escudos_nav
 
 dash.register_page(__name__, path="/", name="Inicio")
 
@@ -39,8 +41,6 @@ def create_recaudacion_card(title, value_str, color="#18395c", is_active=True, h
                 className="home-card",
                 children=[
                     html.H3(title, className="home-card-title"),
-                    html.Div("RECAUDACIÓN TOTAL",
-                             className="home-card-subtitle"),
                     html.Div(value_str,
                              className="home-card-value",
                              style={"color": value_color}),
@@ -108,19 +108,27 @@ def _build_card(cfg, data):
                                        color="#18395c", is_active=True, href=cfg["href"])
 
 
-layout = html.Div(
-    className="cards-container",
-    id="home-cards-container",
-    children=[]
-)
+layout = html.Div([
+    # Banda azul corporativa "RECAUDACIÓN TOTAL" sobre las 4 tarjetas
+    html.Div("RECAUDACIÓN TOTAL", className="banner-title"),
+    html.Div(
+        className="cards-container",
+        id="home-cards-container",
+        children=[]
+    ),
+    # Navegador de escudos (visible solo para admins)
+    html.Div(id="home-escudos-nav", children=[]),
+])
 
 
 @callback(
     Output("home-cards-container", "children"),
+    Output("home-escudos-nav", "children"),
     Input("session-store", "data"),
 )
 def update_home_cards(session):
-    """Muestra solo las tarjetas a las que el usuario tiene acceso."""
+    """Muestra solo las tarjetas a las que el usuario tiene acceso.
+    El navegador de escudos (ficha post-partido) solo se muestra a admins."""
     rec_estadio, rec_hosteleria, rec_tiendas, rec_museo = _load_home_data()
     data = {"estadio": rec_estadio, "hosteleria": rec_hosteleria, "deportiendas": rec_tiendas, "museo": rec_museo}
 
@@ -144,4 +152,15 @@ def update_home_cards(session):
     for i in range(0, len(visible_cards), 2):
         rows.append(html.Div(className="cards-row", children=visible_cards[i:i+2]))
 
-    return rows
+    # Navegador de escudos: solo admins
+    escudos_block = []
+    if is_global:
+        try:
+            df_rivales = get_ficha_rivales_temp_actual()
+            escudos_block = [build_escudos_nav(df_rivales, layout="grid",
+                                               title="FICHA POST PARTIDO")]
+        except Exception as e:
+            print(f"Error cargando escudos: {e}")
+            escudos_block = []
+
+    return rows, escudos_block

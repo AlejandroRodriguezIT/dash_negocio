@@ -18,8 +18,12 @@ MYSQL_URL = f"mysql+pymysql://{MYSQL_CONFIG['user']}:{MYSQL_CONFIG['password']}@
 
 
 def get_engine():
-    """Crea y devuelve un engine de SQLAlchemy."""
-    return create_engine(MYSQL_URL)
+    """Crea y devuelve un engine de SQLAlchemy.
+
+    future=True activa la API compatible con SQLAlchemy 2.0 (Connection.commit
+    y protocolo que pandas 2.x espera en df.to_sql).
+    """
+    return create_engine(MYSQL_URL, future=True)
 
 
 def query_to_df(query: str) -> pd.DataFrame:
@@ -308,13 +312,89 @@ def get_partidos_local(temporada: str = '2025'):
     """Obtiene partidos donde RC Deportivo juega de local."""
     query = f"""
     SELECT id, schedule, t2_name, t1_name, id_temporada, dia_semana
-    FROM slv_partidos 
-    WHERE equipo_depor = '901' 
+    FROM slv_partidos
+    WHERE equipo_depor = '901'
     AND id_temporada = '{temporada}'
     AND t1_name = 'RC Deportivo'
     ORDER BY schedule
     """
     return query_to_df(query)
+
+
+# =============================================================================
+# FICHA POST-PARTIDO
+# =============================================================================
+
+def get_ficha_rivales_temp_actual():
+    """Devuelve los rivales de liga regular 25/26 en orden CRONOLÓGICO (más antiguo → más reciente).
+
+    Solo incluye partidos de competición oficial como local (excluye pretemporada
+    con cutoff 15-agosto). Para cada rival:
+      - id_partido si hay partido con ficha registrada (jugado), NULL si aún por jugar.
+      - result si está disputado, NULL si no.
+    """
+    query = """
+    SELECT
+        p.t2_name,
+        MIN(p.id) AS id_partido,
+        MIN(p.schedule) AS schedule,
+        MAX(CASE WHEN p.result IS NOT NULL AND p.result <> '' THEN p.result END) AS result,
+        MAX(CASE WHEN f.id_partido IS NOT NULL THEN 1 ELSE 0 END) AS tiene_ficha
+    FROM slv_partidos p
+    LEFT JOIN pre_ficha_partido f ON p.id = f.id_partido
+    WHERE p.t1_name = 'RC Deportivo'
+      AND p.id_temporada = '2025'
+      AND p.schedule >= '2025-08-15'
+    GROUP BY p.t2_name
+    ORDER BY MIN(p.schedule) ASC
+    """
+    return query_to_df(query)
+
+
+def get_ficha_partido(id_partido: int):
+    """Devuelve la fila de pre_ficha_partido para un partido concreto."""
+    query = f"SELECT * FROM pre_ficha_partido WHERE id_partido = {int(id_partido)} LIMIT 1"
+    return query_to_df(query)
+
+
+# =============================================================================
+# CUENTA DE EXPLOTACIÓN HOSTELERÍA
+# =============================================================================
+
+def get_cuenta_explotacion_raw():
+    """Datos crudos (Silver) — granularidad mínima por (area, equipo, bloque,
+    variable, dimension, clave, id_partido). Útil para cualquier agregación
+    custom que se quiera hacer en el dashboard."""
+    return query_to_df("SELECT * FROM slv_cuenta_explotacion")
+
+
+def get_pre_cuenta_pl_area():
+    """P&L (ingresos/coste_total/resultado/margen_pct) por área, equipo,
+    dimensión, clave e id_partido."""
+    return query_to_df("SELECT * FROM pre_cuenta_pl_area ORDER BY area, dimension, clave")
+
+
+def get_pre_cuenta_kpis_global():
+    """KPIs globales agregados de TODAS las áreas (1 fila)."""
+    return query_to_df("SELECT * FROM pre_cuenta_kpis_global")
+
+
+def get_pre_cuenta_costes_area():
+    """Desglose de costes (personal, food, beverage, mercadería, varios,
+    mantenimiento) por área, equipo, dimensión, clave e id_partido."""
+    return query_to_df("SELECT * FROM pre_cuenta_costes_area ORDER BY area, dimension, clave")
+
+
+def get_pre_cuenta_productos_partido():
+    """Unidades vendidas de productos por área, equipo, dimensión, clave,
+    id_partido y nombre de producto."""
+    return query_to_df("SELECT * FROM pre_cuenta_productos_partido "
+                       "ORDER BY area, producto, unidades DESC")
+
+
+def get_pre_cuenta_mensual_area():
+    """Serie temporal mensual de ingresos/costes/resultado por área."""
+    return query_to_df("SELECT * FROM pre_cuenta_mensual_area")
 
 
 # =============================================================================
@@ -379,7 +459,7 @@ def get_museo_partidos_local():
 def init_users_table():
     """Crea la tabla de usuarios si no existe e inserta admin por defecto."""
     engine = get_engine()
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS plataforma_usuarios (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -399,13 +479,12 @@ def init_users_table():
                 "INSERT INTO plataforma_usuarios (usuario, contrasena, permisos, nombre, rol) "
                 "VALUES ('admin', 'admin', '0', 'Administrador', 'Dirección')"
             ))
-        conn.commit()
 
 
 def validate_user(usuario: str, contrasena: str):
     """Valida credenciales. Devuelve dict con info del usuario o None."""
     engine = get_engine()
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         result = conn.execute(text(
             "SELECT id, usuario, permisos, nombre, rol FROM plataforma_usuarios "
             "WHERE usuario = :u AND contrasena = :p AND activo = 1"
