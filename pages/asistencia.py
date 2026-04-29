@@ -156,7 +156,11 @@ def get_result_color(result_str):
 
 
 def create_escudos_with_result(rivales, results, y_pos=-0.09, sizex=0.55, sizey=0.10):
-    """Crea imágenes de escudos con círculos coloreados según resultado."""
+    """Crea imágenes de escudos con círculos coloreados según resultado.
+
+    `layer="above"` fuerza que los escudos se rendericen por encima de las
+    trazas del plot, evitando que queden ocultos en las gráficas con muchas
+    barras o líneas que podrían cubrir el área del eje X."""
     images = []
     shapes = []
     for i, (rival, result) in enumerate(zip(rivales, results)):
@@ -168,7 +172,7 @@ def create_escudos_with_result(rivales, results, y_pos=-0.09, sizex=0.55, sizey=
             y0=y_pos - 0.06, y1=y_pos + 0.06,
             line=dict(color=color, width=2.5),
             fillcolor="rgba(0,0,0,0)",
-            layer="below"
+            layer="above"
         ))
         escudo_path = get_escudo_path(rival)
         if escudo_path:
@@ -177,7 +181,8 @@ def create_escudos_with_result(rivales, results, y_pos=-0.09, sizex=0.55, sizey=
                 xref="x", yref="paper",
                 x=i, y=y_pos,
                 sizex=sizex, sizey=sizey,
-                xanchor="center", yanchor="middle"
+                xanchor="center", yanchor="middle",
+                layer="above"
             ))
     return images, shapes
 
@@ -441,7 +446,8 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
             
-            # Fila 2: Asistencia por grada y por edad
+            # Fila 2: Asistencia por grada y por edad — margen superior extra
+            # para que los escudos del evolutivo no se superpongan con los títulos.
             html.Div([
                 html.Div([
                     html.H4("Promedio de Abonados Asistentes por Grada"),
@@ -451,15 +457,16 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
                     html.H4("Promedio de Abonados Asistentes por Edad"),
                     dcc.Graph(figure=fig4, config={'displayModeBar': False})
                 ], className="graph-card small"),
-            ], className="graphs-row"),
-            
-            # Fila 3: Abonados consecutivos por jornada
+            ], className="graphs-row", style={"marginTop": "18px"}),
+
+            # Fila 3: Abonados consecutivos por jornada — margen superior extra
+            # para que los escudos del evolutivo no se superpongan con el título.
             html.Div([
                 html.Div([
                     html.H4("Número de Abonados con Asistencia Consecutiva por Jornada"),
                     dcc.Graph(figure=fig2, config={'displayModeBar': False})
                 ], className="graph-card full-width"),
-            ], className="graphs-row"),
+            ], className="graphs-row", style={"marginTop": "18px"}),
         ], className="graphs-container"),
     ], className="page-content-container")
 
@@ -612,8 +619,8 @@ def update_page(_, temp_seleccionada):
 
         max_y = max(abonados_consecutivos) * 1.2 if abonados_consecutivos else 100
         fig2.update_layout(
-            height=400,
-            margin=dict(b=50, t=20, l=40, r=20),
+            height=410,                         # +10px sobre el evolutivo
+            margin=dict(b=60, t=20, l=40, r=20),  # +10px de espacio inferior
             images=escudos_images_f2,
             shapes=result_shapes_f2,
             xaxis=dict(
@@ -660,8 +667,8 @@ def update_page(_, temp_seleccionada):
         escudos_g3, result_shapes_g3 = create_escudos_with_result(rivales_g3, results_g3)
         
         fig3.update_layout(
-            height=400,
-            margin=dict(b=50, t=20, l=40, r=20),
+            height=410,
+            margin=dict(b=70, t=20, l=40, r=20),  # +20px abajo para escudos
             images=escudos_g3,
             shapes=result_shapes_g3,
             showlegend=False,
