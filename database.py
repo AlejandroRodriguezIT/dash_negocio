@@ -397,6 +397,19 @@ def get_pre_cuenta_mensual_area():
     return query_to_df("SELECT * FROM pre_cuenta_mensual_area")
 
 
+def get_pre_rentabilidad_operativa():
+    """Rentabilidad operativa (%) por área × dimensión (temporada / mes)."""
+    return query_to_df("SELECT * FROM pre_rentabilidad_operativa "
+                       "ORDER BY area, dimension DESC, clave")
+
+
+def get_pre_costes_desglose():
+    """Costes desglosados por categoría (servicio_total / personal / food /
+    beverage / varios), área, equipo, dimensión, clave e id_partido."""
+    return query_to_df("SELECT * FROM pre_costes_desglose "
+                       "ORDER BY area, categoria, dimension, clave")
+
+
 # =============================================================================
 # MUSEO RCD
 # =============================================================================

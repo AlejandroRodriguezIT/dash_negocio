@@ -59,7 +59,52 @@ ESCUDOS_MAP = {
     'UD Almería': 'UD Almería.png',
     'Las Palmas': 'UD Las Palmas.png',
     'UD Las Palmas': 'UD Las Palmas.png',
+    # Rivales temporada 24/25 (no presentes en 25/26)
+    'Cartagena': 'Cartagena.png',
+    'FC Cartagena': 'Cartagena.png',
+    'Elche': 'Elche.png',
+    'Elche CF': 'Elche.png',
+    'Eldense': 'Eldense.png',
+    'CD Eldense': 'Eldense.png',
+    'Le Havre': 'Le Havre.png',
+    'Levante': 'Levante.png',
+    'Levante UD': 'Levante.png',
+    # Rivales 24/25 cuyos archivos PNG aún no están en assets/Escudos/
+    # (el club debe añadirlos para que se muestren correctamente).
+    'Tenerife': 'Tenerife.png',
+    'CD Tenerife': 'Tenerife.png',
+    'Real Oviedo': 'Real Oviedo.png',
+    'Racing Ferrol': 'Racing Ferrol.png',
+    'Racing de Ferrol': 'Racing Ferrol.png',
+    'Unionistas': 'Unionistas.png',
+    'Unionistas CF': 'Unionistas.png',
 }
+
+
+def temporada_toggle(toggle_id, store_id, label="Temporada 24/25",
+                      initial_active=False, store_storage='memory'):
+    """Toggle reutilizable estilo cápsula con switch para alternar entre la
+    temporada actual y la anterior.
+
+    Args:
+        toggle_id: id del Div clicable (sirve para conectar el callback al click).
+        store_id: id del dcc.Store que guarda el estado ('actual' | 'anterior').
+        label: texto mostrado en la cápsula.
+        initial_active: estado inicial (False = temporada actual seleccionada).
+        store_storage: 'memory' | 'session' | 'local' del dcc.Store.
+
+    Devuelve un html.Div con el toggle + el Store oculto.
+    """
+    initial_data = 'anterior' if initial_active else 'actual'
+    initial_class = "season-toggle active" if initial_active else "season-toggle"
+    return html.Div([
+        dcc.Store(id=store_id, storage_type=store_storage, data=initial_data),
+        html.Div([
+            html.Span(label, className="season-toggle-label"),
+            html.Div(className="season-toggle-switch"),
+        ], id=toggle_id, className=initial_class, n_clicks=0),
+    ], className="section-header-toggle-wrapper")
+
 
 
 def get_escudo_path(t2_name):

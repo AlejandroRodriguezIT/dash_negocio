@@ -48,7 +48,12 @@ SECCIONES = {
                      "href": "/deportiendas", "id": "nav-deportiendas"},
     "hosteleria":   {"permiso": 4, "label": "DÉPOR HOSTELERIA",
                      "icon": "/assets/Indice/Depor_Hosteleria.png",
-                     "href": "/hosteleria", "id": "nav-hosteleria"},
+                     "href": "/hosteleria", "id": "nav-hosteleria",
+                     "subitems": [
+                         {"label": "MatchDay", "href": "/hosteleria"},
+                         {"label": "Cuenta de Explotación",
+                          "href": "/hosteleria/cuenta-explotacion"},
+                     ]},
 }
 
 
@@ -258,6 +263,20 @@ def toggle_login(session, pathname):
                     html.Span(sec['label'])
                 ], href=sec['href'], className=cls, id=sec['id'])
             )
+            # Sub-items: solo se muestran cuando la sección está activa
+            if is_active and sec.get('subitems'):
+                for sub in sec['subitems']:
+                    href = sub['href']
+                    # MatchDay (/hosteleria) está activo solo si pathname es exactamente eso;
+                    # las demás sub-páginas están activas cuando pathname coincide o desciende
+                    if href == '/hosteleria':
+                        sub_active = (pathname == '/hosteleria')
+                    else:
+                        sub_active = (pathname == href or pathname.startswith(href + '/'))
+                    sub_cls = "nav-sublink active" if sub_active else "nav-sublink"
+                    nav_items.append(
+                        dcc.Link(sub['label'], href=href, className=sub_cls)
+                    )
 
     nombre = session.get('nombre', session.get('usuario', ''))
     rol = session.get('rol', '')

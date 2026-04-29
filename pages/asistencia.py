@@ -15,6 +15,7 @@ from database import (
     get_pre_asistencia_consecutiva, get_pre_asistencia_partido,
     get_pre_asistencia_edad
 )
+from components import temporada_toggle
 
 dash.register_page(__name__, path="/estadio/asistencia", name="Asistencia")
 
@@ -77,6 +78,24 @@ ESCUDOS_MAP = {
     'UD Almería': 'UD Almería.png',
     'Las Palmas': 'UD Las Palmas.png',
     'UD Las Palmas': 'UD Las Palmas.png',
+    # Rivales temporada 24/25 (no presentes en 25/26)
+    'Cartagena': 'Cartagena.png',
+    'FC Cartagena': 'Cartagena.png',
+    'Elche': 'Elche.png',
+    'Elche CF': 'Elche.png',
+    'Eldense': 'Eldense.png',
+    'CD Eldense': 'Eldense.png',
+    'Le Havre': 'Le Havre.png',
+    'Levante': 'Levante.png',
+    'Levante UD': 'Levante.png',
+    # Rivales 24/25 cuyos archivos PNG aún no están en assets/Escudos/
+    'Tenerife': 'Tenerife.png',
+    'CD Tenerife': 'Tenerife.png',
+    'Real Oviedo': 'Real Oviedo.png',
+    'Racing Ferrol': 'Racing Ferrol.png',
+    'Racing de Ferrol': 'Racing Ferrol.png',
+    'Unionistas': 'Unionistas.png',
+    'Unionistas CF': 'Unionistas.png',
 }
 
 
@@ -172,8 +191,32 @@ def _kpi_tooltip(text):
     ], className="kpi-tooltip-wrapper")
 
 
-def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_anterior, tooltip=None):
-    """Tarjeta KPI de Abonados por Partido con % del total integrado."""
+def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_anterior,
+                          tooltip=None, comparar=True):
+    """Tarjeta KPI de Abonados por Partido con % del total integrado.
+    Si `comparar=False`, solo muestra el dato actual sin comparativa."""
+    lbl = "Abonados por Partido (% del total)"
+    label_children = [lbl]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
+    if not comparar:
+        return html.Div([
+            label_div,
+            html.Div([
+                html.Span(format_with_dots(promedio_actual),
+                          className="kpi-value kpi-value-neutral",
+                          style={"fontSize": "1.15rem"}),
+                html.Span(f" ({pct_actual:.1f}%)",
+                          style={"fontSize": "0.75rem", "fontWeight": "600",
+                                  "color": "var(--primary-blue)"}),
+            ], style={"display": "flex", "alignItems": "baseline",
+                       "justifyContent": "center", "gap": "3px"}),
+        ], className="kpi-card")
+
     if promedio_anterior > 0:
         pct_diff = ((promedio_actual - promedio_anterior) / promedio_anterior) * 100
         if pct_diff >= 0:
@@ -188,14 +231,6 @@ def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_ante
         pct_text = "N/A"
         color_class = "kpi-value-positive"
         color_css = "var(--success-green)"
-    
-    lbl = "Abonados por Partido (% del total)"
-    label_children = [lbl]
-    if tooltip:
-        label_children.append(_kpi_tooltip(tooltip))
-    label_div = html.Div(label_children, className="kpi-label-top",
-                         style={"display": "flex", "alignItems": "center",
-                                "justifyContent": "center", "gap": "5px"})
 
     return html.Div([
         label_div,
@@ -258,8 +293,31 @@ def create_kpi_edad(edad_promedio, tooltip=None):
     ], className="kpi-card")
 
 
-def create_kpi_tardios(promedio_actual, pct_tarde, promedio_anterior, pct_tarde_anterior, tooltip=None):
-    """Tarjeta KPI de Abonados Tardíos (lógica inversa: menor es mejor)."""
+def create_kpi_tardios(promedio_actual, pct_tarde, promedio_anterior, pct_tarde_anterior,
+                        tooltip=None, comparar=True):
+    """Tarjeta KPI de Abonados Tardíos (lógica inversa: menor es mejor).
+    Si `comparar=False`, solo muestra el dato actual."""
+    lbl = "Abonados Tardíos por partido"
+    label_children = [lbl]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
+    if not comparar:
+        return html.Div([
+            label_div,
+            html.Div([
+                html.Span(format_with_dots(promedio_actual),
+                          className="kpi-value kpi-value-neutral"),
+                html.Span(f" ({pct_tarde:.1f}%)",
+                          style={"fontSize": "0.75rem", "fontWeight": "600",
+                                  "color": "var(--primary-blue)"}),
+            ], style={"display": "flex", "alignItems": "baseline",
+                       "justifyContent": "center", "gap": "3px"}),
+        ], className="kpi-card")
+
     if promedio_anterior > 0:
         pct_diff = ((promedio_actual - promedio_anterior) / promedio_anterior) * 100
         if pct_diff <= 0:
@@ -274,14 +332,6 @@ def create_kpi_tardios(promedio_actual, pct_tarde, promedio_anterior, pct_tarde_
         pct_text = "N/A"
         color_class = "kpi-value-positive"
         color_css = "var(--success-green)"
-    
-    lbl = "Abonados Tardíos por partido"
-    label_children = [lbl]
-    if tooltip:
-        label_children.append(_kpi_tooltip(tooltip))
-    label_div = html.Div(label_children, className="kpi-label-top",
-                         style={"display": "flex", "alignItems": "center",
-                                "justifyContent": "center", "gap": "5px"})
 
     return html.Div([
         label_div,
@@ -345,6 +395,8 @@ def create_section_header(active_tab="asistencia"):
 
 layout = html.Div([
     create_section_header("asistencia"),
+    temporada_toggle(toggle_id="toggle-temp-asistencia",
+                      store_id="temp-store-asistencia"),
     dcc.Loading(
         id="loading-asistencia",
         type="default",
@@ -353,6 +405,20 @@ layout = html.Div([
         custom_spinner=loading_component(),
     )
 ])
+
+
+@callback(
+    Output("temp-store-asistencia", "data"),
+    Output("toggle-temp-asistencia", "className"),
+    Input("toggle-temp-asistencia", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_temporada_asistencia(n_clicks):
+    if not n_clicks:
+        return "actual", "season-toggle"
+    activo = (n_clicks % 2 == 1)
+    return ("anterior" if activo else "actual",
+            "season-toggle active" if activo else "season-toggle")
 
 
 def create_page_content(kpis, fig1, fig2, fig3, fig4):
@@ -400,30 +466,61 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
 
 @callback(
     Output("content-asistencia", "children"),
-    Input("content-asistencia", "id")
+    Input("content-asistencia", "id"),
+    Input("temp-store-asistencia", "data"),
 )
-def update_page(_):
-    """Actualiza todas las gráficas con datos pre-calculados."""
+def update_page(_, temp_seleccionada):
+    """Actualiza todas las gráficas con datos pre-calculados.
+
+    `temp_seleccionada` viene del toggle Temporada 24/25.
+    """
     try:
-        # Obtener datos pre-calculados (consultas simples, sin JOINs pesados)
         df_kpis = get_pre_asistencia_kpis()
         df_sector = get_pre_asistencia_sector()
         df_consecutiva = get_pre_asistencia_consecutiva()
         df_partido = get_pre_asistencia_partido()
         df_edad = get_pre_asistencia_edad()
-        
+
+        temp = temp_seleccionada or 'actual'
+        es_anterior = (temp == 'anterior')
+
         if df_kpis.empty:
             empty_fig = go.Figure()
             empty_fig.update_layout(
                 annotations=[{"text": "No hay datos disponibles. Ejecuta sync_data.py primero.", "showarrow": False}]
             )
             return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
-        
+
+        # Filtrar todas las tablas a la temporada seleccionada
+        df_sector = df_sector[df_sector['temporada'] == temp]
+        df_consecutiva = df_consecutiva[df_consecutiva['temporada'] == temp]
+        df_partido = df_partido[df_partido['temporada'] == temp]
+        df_edad = df_edad[df_edad['temporada'] == temp]
+
         # =====================================================================
-        # KPIs (ya pre-calculados)
+        # KPIs (pre-calculados; en modo anterior se omite la comparativa)
         # =====================================================================
-        kpi_actual = df_kpis[df_kpis['temporada'] == 'actual'].iloc[0]
-        kpi_anterior = df_kpis[df_kpis['temporada'] == 'anterior'].iloc[0]
+        kpi_sel = df_kpis[df_kpis['temporada'] == temp]
+        kpi_otra = df_kpis[df_kpis['temporada'] == ('anterior' if not es_anterior else 'actual')]
+        if kpi_sel.empty:
+            empty_fig = go.Figure()
+            empty_fig.update_layout(
+                annotations=[{"text": f"Sin datos KPI para temporada {('24/25' if es_anterior else '25/26')}",
+                              "showarrow": False}]
+            )
+            return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
+        kpi_actual = kpi_sel.iloc[0]
+        # Cuando se muestra temp anterior, no hay comparativa: usamos zeros como anterior
+        if es_anterior or kpi_otra.empty:
+            kpi_anterior = pd.Series({
+                'promedio_asistentes': 0, 'pct_asistencia': 0,
+                'edad_promedio': 0, 'promedio_tarde': 0, 'pct_tarde': 0,
+                'male_count': 0, 'female_count': 0,
+                'male_pct': 0.0, 'female_pct': 0.0,
+                'total_abonados': 0,
+            })
+        else:
+            kpi_anterior = kpi_otra.iloc[0]
         
         # KPI tooltip helpers
         TT_sexo = "Distribución por género de los abonados asistentes al estadio."
@@ -449,11 +546,13 @@ def update_page(_):
             ], style={"display": "flex", "justifyContent": "center", "gap": "10px"}),
         ], className="kpi-card")
         
+        comparar = not es_anterior
         kpis = html.Div([
             create_kpi_abonados(
                 kpi_actual['promedio_asistentes'], kpi_actual['pct_asistencia'],
                 kpi_anterior['promedio_asistentes'], kpi_anterior['pct_asistencia'],
-                tooltip="Media de abonados que accedieron al estadio por partido (registro de tornos). Se excluyen abonos 'SIN ASIENTO', 'CERO' y 'AREA 1906'. El % se calcula sobre el total de abonados."
+                tooltip="Media de abonados que accedieron al estadio por partido (registro de tornos). Se excluyen abonos 'SIN ASIENTO', 'CERO' y 'AREA 1906'. El % se calcula sobre el total de abonados.",
+                comparar=comparar,
             ),
             df_sexo_kpi,
             create_kpi_edad(kpi_actual['edad_promedio'],
@@ -461,7 +560,8 @@ def update_page(_):
             create_kpi_tardios(
                 kpi_actual['promedio_tarde'], kpi_actual['pct_tarde'],
                 kpi_anterior['promedio_tarde'], kpi_anterior['pct_tarde'],
-                tooltip="Media de abonados que accedieron al estadio después del inicio del partido. Un valor menor indica mayor puntualidad."
+                tooltip="Media de abonados que accedieron al estadio después del inicio del partido. Un valor menor indica mayor puntualidad.",
+                comparar=comparar,
             ),
         ], className="kpis-row")
         
@@ -504,12 +604,16 @@ def update_page(_):
             textfont=dict(color='#333', size=10, family='Montserrat', weight='bold')
         ))
         
-        escudos_images_f2, result_shapes_f2 = create_escudos_with_result(rivales_list, results_list, y_pos=-0.12, sizex=0.55, sizey=0.10)
-        
+        # Eje X con escudos en el mismo formato que el evolutivo (fig3):
+        # y_pos=-0.09 (cerca del borde inferior), tamaño y márgenes uniformes.
+        escudos_images_f2, result_shapes_f2 = create_escudos_with_result(
+            rivales_list, results_list
+        )
+
         max_y = max(abonados_consecutivos) * 1.2 if abonados_consecutivos else 100
         fig2.update_layout(
-            height=450,
-            margin=dict(b=70, t=10, l=40, r=20),
+            height=400,
+            margin=dict(b=50, t=20, l=40, r=20),
             images=escudos_images_f2,
             shapes=result_shapes_f2,
             xaxis=dict(

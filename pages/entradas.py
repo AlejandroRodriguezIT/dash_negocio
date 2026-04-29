@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, date
 from database import get_pre_entradas_partido, get_pre_entradas_sector
+from components import temporada_toggle
 
 dash.register_page(__name__, path="/estadio/entradas", name="Entradas")
 
@@ -73,6 +74,24 @@ ESCUDOS_MAP = {
     'UD Almería': 'UD Almería.png',
     'Las Palmas': 'UD Las Palmas.png',
     'UD Las Palmas': 'UD Las Palmas.png',
+    # Rivales temporada 24/25 (no presentes en 25/26)
+    'Cartagena': 'Cartagena.png',
+    'FC Cartagena': 'Cartagena.png',
+    'Elche': 'Elche.png',
+    'Elche CF': 'Elche.png',
+    'Eldense': 'Eldense.png',
+    'CD Eldense': 'Eldense.png',
+    'Le Havre': 'Le Havre.png',
+    'Levante': 'Levante.png',
+    'Levante UD': 'Levante.png',
+    # Rivales 24/25 cuyos archivos PNG aún no están en assets/Escudos/
+    'Tenerife': 'Tenerife.png',
+    'CD Tenerife': 'Tenerife.png',
+    'Real Oviedo': 'Real Oviedo.png',
+    'Racing Ferrol': 'Racing Ferrol.png',
+    'Racing de Ferrol': 'Racing Ferrol.png',
+    'Unionistas': 'Unionistas.png',
+    'Unionistas CF': 'Unionistas.png',
 }
 
 
@@ -152,8 +171,9 @@ def _kpi_tooltip(text):
     ], className="kpi-tooltip-wrapper")
 
 
-def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", tooltip=None):
-    """Crea una tarjeta KPI con comparativa y % de diferencia."""
+def create_kpi_card(valor_actual, valor_anterior, label, formato="numero",
+                     tooltip=None, comparar=True):
+    """Crea una tarjeta KPI. Si `comparar=False`, solo muestra el valor agregado."""
     label_children = [label]
     if tooltip:
         label_children.append(_kpi_tooltip(tooltip))
@@ -170,7 +190,16 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", toolt
     else:
         texto_actual = format_with_dots(valor_actual)
         texto_anterior = format_with_dots(valor_anterior)
-    
+
+    if not comparar:
+        return html.Div([
+            label_div,
+            html.Div([
+                html.Span(texto_actual, className="kpi-value kpi-value-neutral"),
+            ], style={"display": "flex", "alignItems": "baseline",
+                       "justifyContent": "center", "gap": "5px"}),
+        ], className="kpi-card")
+
     if valor_anterior > 0:
         pct_diff = ((valor_actual - valor_anterior) / valor_anterior) * 100
         if pct_diff >= 0:
@@ -182,7 +211,7 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", toolt
     else:
         pct_text = "N/A"
         color_class = "kpi-value-positive" if valor_actual >= valor_anterior else "kpi-value-negative"
-    
+
     return html.Div([
         label_div,
         html.Div([
@@ -224,6 +253,8 @@ def create_section_header(active_tab="entradas"):
 # Layout de la página
 layout = html.Div([
     create_section_header("entradas"),
+    temporada_toggle(toggle_id="toggle-temp-entradas",
+                      store_id="temp-store-entradas"),
     dcc.Loading(
         id="loading-entradas",
         type="default",
@@ -232,6 +263,20 @@ layout = html.Div([
         custom_spinner=loading_component(),
     )
 ])
+
+
+@callback(
+    Output("temp-store-entradas", "data"),
+    Output("toggle-temp-entradas", "className"),
+    Input("toggle-temp-entradas", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_temporada_entradas(n_clicks):
+    if not n_clicks:
+        return "actual", "season-toggle"
+    activo = (n_clicks % 2 == 1)
+    return ("anterior" if activo else "actual",
+            "season-toggle active" if activo else "season-toggle")
 
 
 def create_page_content(kpis, fig1, fig2, fig3, fig4):
@@ -279,58 +324,76 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
 
 @callback(
     Output("content-entradas", "children"),
-    Input("content-entradas", "id")
+    Input("content-entradas", "id"),
+    Input("temp-store-entradas", "data"),
 )
-def update_page(_):
-    """Actualiza todas las gráficas con datos pre-calculados."""
+def update_page(_, temp_seleccionada):
+    """Actualiza todas las gráficas con datos pre-calculados.
+
+    `temp_seleccionada` viene del toggle Temporada 24/25.
+    """
     df_all = get_data()
-    
+    temp = temp_seleccionada or 'actual'
+    es_anterior = (temp == 'anterior')
+
     if df_all.empty:
         empty_fig = go.Figure()
         empty_fig.update_layout(
             annotations=[{"text": "No hay datos disponibles", "showarrow": False}]
         )
         return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
-    
-    # Separar temporadas (ya pre-filtradas)
-    df_partido = df_all[df_all['temporada'] == 'actual'].sort_values('schedule')
-    df_partido_ant = df_all[df_all['temporada'] == 'anterior']
-    
+
+    df_partido = df_all[df_all['temporada'] == temp].sort_values('schedule')
+    # Comparativa justa: cuando el toggle está inactivo (modo 25/26), comparamos
+    # solo con los primeros N partidos de 24/25 (los equivalentes en jornada).
+    # Cuando el toggle está activo (modo 24/25), df_partido ya contiene los 21
+    # partidos completos de la temporada cerrada.
+    if not es_anterior:
+        df_partido_ant_full = df_all[df_all['temporada'] == 'anterior'].sort_values('schedule')
+        df_partido_ant = df_partido_ant_full.head(len(df_partido))
+    else:
+        df_partido_ant = pd.DataFrame()
+
     if df_partido.empty:
         empty_fig = go.Figure()
         empty_fig.update_layout(
-            annotations=[{"text": "No hay datos para la temporada actual", "showarrow": False}]
+            annotations=[{"text": f"No hay datos para la temporada {('24/25' if es_anterior else '25/26')}",
+                          "showarrow": False}]
         )
         return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
-    
-    # KPIs actuales
+
+    # KPIs (sin comparativa cuando es_anterior)
     total_vendidas = df_partido['n_publico'].sum()
     total_recaudacion = df_partido['recaudacion'].sum()
     num_partidos = len(df_partido)
     promedio_vendidas = total_vendidas / num_partidos if num_partidos > 0 else 0
     recaudacion_por_partido = total_recaudacion / num_partidos if num_partidos > 0 else 0
-    
-    # KPIs temporada anterior
-    total_vendidas_ant = df_partido_ant['n_publico'].sum()
-    total_recaudacion_ant = df_partido_ant['recaudacion'].sum()
+
+    total_vendidas_ant = df_partido_ant['n_publico'].sum() if not df_partido_ant.empty else 0
+    total_recaudacion_ant = df_partido_ant['recaudacion'].sum() if not df_partido_ant.empty else 0
     num_partidos_ant = len(df_partido_ant)
     promedio_vendidas_ant = total_vendidas_ant / num_partidos_ant if num_partidos_ant > 0 else 0
     recaudacion_por_partido_ant = total_recaudacion_ant / num_partidos_ant if num_partidos_ant > 0 else 0
-    
+
+    comparar = not es_anterior
     kpis = html.Div([
         create_kpi_card(total_vendidas, total_vendidas_ant, "Total Entradas Vendidas", "entradas",
-                        tooltip="Nº total de entradas vendidas al público general en todos los partidos disputados."),
+                        tooltip="Nº total de entradas vendidas al público general en todos los partidos disputados.",
+                        comparar=comparar),
         create_kpi_card(promedio_vendidas, promedio_vendidas_ant, "Entradas por Partido", "entradas",
-                        tooltip="Media de entradas vendidas por partido. Cálculo: Total Entradas Vendidas ÷ Nº Partidos."),
+                        tooltip="Media de entradas vendidas por partido. Cálculo: Total Entradas Vendidas ÷ Nº Partidos.",
+                        comparar=comparar),
         create_kpi_card(total_recaudacion, total_recaudacion_ant, "Recaudación Total", "euros",
-                        tooltip="Suma de ingresos por venta de entradas al público general en todos los partidos."),
+                        tooltip="Suma de ingresos por venta de entradas al público general en todos los partidos.",
+                        comparar=comparar),
         create_kpi_card(recaudacion_por_partido, recaudacion_por_partido_ant, "Recaudación por Partido", "euros",
-                        tooltip="Media de recaudación por venta de entradas por partido. Cálculo: Recaudación Total ÷ Nº Partidos."),
+                        tooltip="Media de recaudación por venta de entradas por partido. Cálculo: Recaudación Total ÷ Nº Partidos.",
+                        comparar=comparar),
     ], className="kpis-row")
-    
-    # Cargar desglose por sector para hovers
+
+    # Cargar desglose por sector para hovers (filtrado por temporada seleccionada)
     df_sector = get_pre_entradas_sector()
-    df_sector_actual = df_sector[df_sector['temporada'] == 'actual']
+    df_sector_actual = df_sector[df_sector['temporada'] == temp]
     gradas_orden = ['FONDO MARATHON', 'PREFERENCIA', 'FONDO PABELLON', 'TRIBUNA']
     
     def build_sector_hover(match_ids, metric):

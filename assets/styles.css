@@ -174,6 +174,102 @@ body {
     margin: 0 auto;
 }
 
+/* Sub-items del sidebar (expandibles bajo una sección con sub-páginas) */
+.nav-sublink {
+    display: block;
+    padding: 8px 20px 8px 52px;
+    color: rgba(255, 255, 255, 0.65);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.25s ease;
+    border-left: 3px solid transparent;
+    letter-spacing: 0.5px;
+}
+
+.nav-sublink:hover {
+    color: var(--white);
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.nav-sublink.active {
+    color: var(--white);
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left-color: #f0a500;
+    font-weight: 600;
+}
+
+/* =============================================================================
+   TOGGLE TEMPORADA (cápsula con switch a la derecha)
+   ============================================================================= */
+
+/* Contenedor exterior: cápsula gris */
+.season-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 22px;
+    padding: 6px 14px 6px 18px;
+    cursor: pointer;
+    font-family: 'Commissioner Flair', 'Commissioner', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--primary-blue);
+    user-select: none;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.season-toggle:hover {
+    background-color: #ececec;
+}
+
+.season-toggle-label {
+    letter-spacing: 0.4px;
+    line-height: 1;
+}
+
+/* Switch interno (estilo iOS) */
+.season-toggle-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    background-color: #cfd6dd;
+    border-radius: 12px;
+    transition: background-color 0.25s ease;
+    flex-shrink: 0;
+}
+
+.season-toggle-switch::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background-color: var(--white);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.25s ease;
+}
+
+/* Estado activo: switch a la derecha + color azul corporativo */
+.season-toggle.active .season-toggle-switch {
+    background-color: var(--primary-blue);
+}
+.season-toggle.active .season-toggle-switch::before {
+    transform: translateX(16px);
+}
+
+/* Wrapper que posiciona el toggle en la esquina sup-derecha del contenedor */
+.section-header-toggle-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+    padding: 0 4px;
+}
+
 /* =============================================================================
    DESGLOSE DE VENTAS — TOGGLE BARRAS / PALCOS
    ============================================================================= */

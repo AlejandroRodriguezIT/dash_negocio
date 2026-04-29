@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime
 from database import get_pre_cesiones_partido, get_pre_cesiones_recaudacion, get_pre_cesiones_sector
+from components import temporada_toggle
 
 dash.register_page(__name__, path="/estadio/cesiones", name="Cesiones")
 
@@ -73,6 +74,24 @@ ESCUDOS_MAP = {
     'UD Almería': 'UD Almería.png',
     'Las Palmas': 'UD Las Palmas.png',
     'UD Las Palmas': 'UD Las Palmas.png',
+    # Rivales temporada 24/25 (no presentes en 25/26)
+    'Cartagena': 'Cartagena.png',
+    'FC Cartagena': 'Cartagena.png',
+    'Elche': 'Elche.png',
+    'Elche CF': 'Elche.png',
+    'Eldense': 'Eldense.png',
+    'CD Eldense': 'Eldense.png',
+    'Le Havre': 'Le Havre.png',
+    'Levante': 'Levante.png',
+    'Levante UD': 'Levante.png',
+    # Rivales 24/25 cuyos archivos PNG aún no están en assets/Escudos/
+    'Tenerife': 'Tenerife.png',
+    'CD Tenerife': 'Tenerife.png',
+    'Real Oviedo': 'Real Oviedo.png',
+    'Racing Ferrol': 'Racing Ferrol.png',
+    'Racing de Ferrol': 'Racing Ferrol.png',
+    'Unionistas': 'Unionistas.png',
+    'Unionistas CF': 'Unionistas.png',
 }
 
 
@@ -152,8 +171,15 @@ def _kpi_tooltip(text):
     ], className="kpi-tooltip-wrapper")
 
 
-def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", tooltip=None):
-    """Crea una tarjeta KPI con comparativa y % de diferencia."""
+def create_kpi_card(valor_actual, valor_anterior, label, formato="numero",
+                     tooltip=None, comparar=True):
+    """Crea una tarjeta KPI.
+
+    Si `comparar=True` muestra el valor actual + % diferencia + dato anterior.
+    Si `comparar=False` muestra únicamente el valor agregado sin comparativa
+    (usado al activar el toggle "Temporada 24/25" para mostrar solo el dato
+    de esa temporada).
+    """
     label_children = [label]
     if tooltip:
         label_children.append(_kpi_tooltip(tooltip))
@@ -170,7 +196,17 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", toolt
     else:
         texto_actual = format_with_dots(valor_actual)
         texto_anterior = format_with_dots(valor_anterior)
-    
+
+    if not comparar:
+        # Modo "solo dato" — no comparativa
+        return html.Div([
+            label_div,
+            html.Div([
+                html.Span(texto_actual, className="kpi-value kpi-value-neutral"),
+            ], style={"display": "flex", "alignItems": "baseline",
+                       "justifyContent": "center", "gap": "5px"}),
+        ], className="kpi-card")
+
     if valor_anterior > 0:
         pct_diff = ((valor_actual - valor_anterior) / valor_anterior) * 100
         if pct_diff >= 0:
@@ -182,7 +218,7 @@ def create_kpi_card(valor_actual, valor_anterior, label, formato="numero", toolt
     else:
         pct_text = "N/A"
         color_class = "kpi-value-positive" if valor_actual >= valor_anterior else "kpi-value-negative"
-    
+
     return html.Div([
         label_div,
         html.Div([
@@ -224,6 +260,8 @@ def create_section_header(active_tab="cesiones"):
 # Layout de la página
 layout = html.Div([
     create_section_header("cesiones"),
+    temporada_toggle(toggle_id="toggle-temp-cesiones",
+                      store_id="temp-store-cesiones"),
     dcc.Loading(
         id="loading-cesiones",
         type="default",
@@ -232,6 +270,21 @@ layout = html.Div([
         custom_spinner=loading_component(),
     )
 ])
+
+
+# Callback que alterna el estado del toggle al hacer clic
+@callback(
+    Output("temp-store-cesiones", "data"),
+    Output("toggle-temp-cesiones", "className"),
+    Input("toggle-temp-cesiones", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_temporada_cesiones(n_clicks):
+    if not n_clicks:
+        return "actual", "season-toggle"
+    activo = (n_clicks % 2 == 1)
+    return ("anterior" if activo else "actual",
+            "season-toggle active" if activo else "season-toggle")
 
 
 def create_page_content(kpis, fig_recaudacion, fig1, fig2, fig3):
@@ -279,56 +332,69 @@ def create_page_content(kpis, fig_recaudacion, fig1, fig2, fig3):
 
 @callback(
     Output("content-cesiones", "children"),
-    Input("content-cesiones", "id")
+    Input("content-cesiones", "id"),
+    Input("temp-store-cesiones", "data"),
 )
-def update_graphs(_):
-    """Actualiza todas las gráficas con datos pre-calculados."""
+def update_graphs(_, temp_seleccionada):
+    """Actualiza todas las gráficas con datos pre-calculados.
+
+    `temp_seleccionada` viene del toggle Temporada 24/25:
+        'actual'   → temp 25/26 con KPIs comparados vs 24/25.
+        'anterior' → temp 24/25 con KPIs sin comparativa.
+    """
     df_all = get_data()
-    
+    temp = temp_seleccionada or 'actual'
+    es_anterior = (temp == 'anterior')
+
     if df_all.empty:
         empty_fig = go.Figure()
         empty_fig.update_layout(
             annotations=[{"text": "No hay datos disponibles", "showarrow": False}]
         )
         return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
-    
-    # Separar temporadas (ya pre-filtradas)
-    df_partido = df_all[df_all['temporada'] == 'actual'].sort_values('schedule')
-    df_partido_ant = df_all[df_all['temporada'] == 'anterior']
-    
+
+    df_partido = df_all[df_all['temporada'] == temp].sort_values('schedule')
+    df_partido_ant = (df_all[df_all['temporada'] == 'anterior']
+                       if not es_anterior else pd.DataFrame())
+
     if df_partido.empty:
         empty_fig = go.Figure()
         empty_fig.update_layout(
-            annotations=[{"text": "No hay datos para la temporada actual", "showarrow": False}]
+            annotations=[{"text": f"No hay datos para la temporada {('24/25' if es_anterior else '25/26')}",
+                          "showarrow": False}]
         )
         return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
-    
-    # KPIs actuales
+
+    # KPIs (sin comparativa cuando es_anterior)
     total_cesiones = df_partido['total_cesiones'].sum()
     total_vendidas = df_partido['vendidas'].sum()
     total_saldo = df_partido['saldo_total'].sum()
     rec_media = (total_saldo / total_vendidas) if total_vendidas > 0 else 0
-    
-    # KPIs temporada anterior
-    total_cesiones_ant = df_partido_ant['total_cesiones'].sum()
-    total_vendidas_ant = df_partido_ant['vendidas'].sum()
-    total_saldo_ant = df_partido_ant['saldo_total'].sum()
+
+    total_cesiones_ant = df_partido_ant['total_cesiones'].sum() if not df_partido_ant.empty else 0
+    total_vendidas_ant = df_partido_ant['vendidas'].sum() if not df_partido_ant.empty else 0
+    total_saldo_ant = df_partido_ant['saldo_total'].sum() if not df_partido_ant.empty else 0
     rec_media_ant = (total_saldo_ant / total_vendidas_ant) if total_vendidas_ant > 0 else 0
-    
+
+    comparar = not es_anterior
     kpis = html.Div([
         create_kpi_card(total_cesiones, total_cesiones_ant, "Total Cesiones Generadas",
-                        tooltip="Nº total de abonos puestos a la venta por los abonados a través del sistema de cesiones."),
+                        tooltip="Nº total de abonos puestos a la venta por los abonados a través del sistema de cesiones.",
+                        comparar=comparar),
         create_kpi_card(total_vendidas, total_vendidas_ant, "Cesiones Vendidas",
-                        tooltip="Nº de cesiones que fueron efectivamente vendidas."),
+                        tooltip="Nº de cesiones que fueron efectivamente vendidas.",
+                        comparar=comparar),
         create_kpi_card(rec_media, rec_media_ant, "Recaudación Media por Cesión", "euros",
-                        tooltip="Importe medio obtenido por cada cesión vendida. Cálculo: Recaudación Total ÷ Cesiones Vendidas."),
+                        tooltip="Importe medio obtenido por cada cesión vendida. Cálculo: Recaudación Total ÷ Cesiones Vendidas.",
+                        comparar=comparar),
         create_kpi_card(total_saldo, total_saldo_ant, "Recaudación Total", "euros",
-                        tooltip="Suma total de ingresos por venta de cesiones en todos los partidos."),
+                        tooltip="Suma total de ingresos por venta de cesiones en todos los partidos.",
+                        comparar=comparar),
     ], className="kpis-row")
-    
-    # Cargar desglose por sector para hovers
+
+    # Cargar desglose por sector para hovers (filtrado por temporada seleccionada)
     df_sector = get_pre_cesiones_sector()
-    df_sector_actual = df_sector[df_sector['temporada'] == 'actual']
+    df_sector_actual = df_sector[df_sector['temporada'] == temp]
     gradas_orden = ['FONDO MARATHON', 'PREFERENCIA', 'FONDO PABELLON', 'TRIBUNA']
     
     def build_sector_hover(match_ids, metric, is_euros=False):
@@ -490,7 +556,7 @@ def update_graphs(_):
     # Gráfica Recaudación: Recaudación por cesiones por partido (con escudos)
     df_rec = get_pre_cesiones_recaudacion()
     df_rec['schedule'] = pd.to_datetime(df_rec['schedule'], errors='coerce')
-    df_rec_actual = df_rec[df_rec['temporada'] == 'actual'].sort_values('schedule')
+    df_rec_actual = df_rec[df_rec['temporada'] == temp].sort_values('schedule')
     
     match_ids_rec = df_rec_actual['id_partido'].tolist()
     hover_rec = build_sector_hover(match_ids_rec, 'recaudacion', is_euros=True)
