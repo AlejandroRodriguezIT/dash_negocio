@@ -200,13 +200,14 @@ def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_ante
                           tooltip=None, comparar=True):
     """Tarjeta KPI de Abonados por Partido con % del total integrado.
     Si `comparar=False`, solo muestra el dato actual sin comparativa."""
-    lbl = "Abonados por Partido (% del total)"
+    lbl = "Abonados por Partido (% total)"
     label_children = [lbl]
     if tooltip:
         label_children.append(_kpi_tooltip(tooltip))
     label_div = html.Div(label_children, className="kpi-label-top",
                          style={"display": "flex", "alignItems": "center",
-                                "justifyContent": "center", "gap": "5px"})
+                                "justifyContent": "center", "gap": "5px",
+                                "fontSize": "1.2rem"})
 
     if not comparar:
         return html.Div([
@@ -245,6 +246,58 @@ def create_kpi_abonados(promedio_actual, pct_actual, promedio_anterior, pct_ante
             html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}", style={"fontSize": "0.75rem"})
         ], style={"display": "flex", "alignItems": "baseline", "justifyContent": "center", "gap": "3px", "flexWrap": "nowrap"}),
         html.Div(f"Temp. 24/25: {format_with_dots(promedio_anterior)} ({pct_anterior:.1f}%)", className="kpi-previous"),
+    ], className="kpi-card")
+
+
+def create_kpi_espectadores(promedio_actual, promedio_anterior,
+                              tooltip=None, comparar=True):
+    """Tarjeta KPI de Espectadores por Partido (promedio simple).
+
+    El valor es la media aritmética simple de la columna `total_espectadores`
+    de `pre_asistencia_partido` filtrada a la temporada activa, **el mismo
+    dato que se muestra como serie azul en "Evolutivo de Asistencia ABANCA -
+    Riazor" y en la gráfica "Espectadores por Partido"**, de forma que sumar
+    los valores mostrados en cualquiera de las dos gráficas y dividir entre
+    el nº de partidos da exactamente el valor del KPI.
+    """
+    lbl = "Espectadores por Partido"
+    label_children = [lbl]
+    if tooltip:
+        label_children.append(_kpi_tooltip(tooltip))
+    label_div = html.Div(label_children, className="kpi-label-top",
+                         style={"display": "flex", "alignItems": "center",
+                                "justifyContent": "center", "gap": "5px"})
+
+    if not comparar:
+        return html.Div([
+            label_div,
+            html.Div([
+                html.Span(format_with_dots(promedio_actual),
+                          className="kpi-value kpi-value-neutral"),
+            ], style={"display": "flex", "alignItems": "baseline",
+                       "justifyContent": "center", "gap": "5px"}),
+        ], className="kpi-card")
+
+    if promedio_anterior > 0:
+        pct_diff = ((promedio_actual - promedio_anterior) / promedio_anterior) * 100
+        if pct_diff >= 0:
+            pct_text = f"+{pct_diff:.1f}%"
+            color_class = "kpi-value-positive"
+        else:
+            pct_text = f"{pct_diff:.1f}%"
+            color_class = "kpi-value-negative"
+    else:
+        pct_text = "N/A"
+        color_class = "kpi-value-positive"
+
+    return html.Div([
+        label_div,
+        html.Div([
+            html.Span(format_with_dots(promedio_actual), className=f"kpi-value {color_class}"),
+            html.Span(f" ({pct_text})", className=f"kpi-pct-diff {color_class}")
+        ], style={"display": "flex", "alignItems": "baseline",
+                   "justifyContent": "center", "gap": "5px"}),
+        html.Div(f"Temp. 24/25: {format_with_dots(promedio_anterior)}", className="kpi-previous"),
     ], className="kpi-card")
 
 
@@ -426,12 +479,17 @@ def toggle_temporada_asistencia(n_clicks):
             "season-toggle active" if activo else "season-toggle")
 
 
-def create_page_content(kpis, fig1, fig2, fig3, fig4):
-    """Crea el contenido completo de la página."""
+def create_page_content(kpis, fig1, fig2, fig3, fig4, fig5):
+    """Crea el contenido completo de la página.
+
+    fig5 ("Espectadores por Partido") es una gráfica de barras que comparte
+    eje X con el evolutivo: el promedio simple de su serie coincide con el
+    KPI "Espectadores por Partido".
+    """
     return html.Div([
         # KPIs
         html.Div(kpis, className="kpis-container"),
-        
+
         # Gráficas
         html.Div([
             # Fila 1: Evolutivo de Asistencia
@@ -445,8 +503,18 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
                                   'textAlign': 'right', 'margin': '2px 10px 0 0'})
                 ], className="graph-card full-width"),
             ], className="graphs-row"),
-            
-            # Fila 2: Asistencia por grada y por edad — margen superior extra
+
+            # Fila 2: Espectadores por Partido (gráfica nueva — los datos
+            # mostrados promediados coinciden con el KPI "Espectadores por
+            # Partido", igual que ocurre con la serie azul del evolutivo).
+            html.Div([
+                html.Div([
+                    html.H4("Espectadores por Partido"),
+                    dcc.Graph(figure=fig5, config={'displayModeBar': False})
+                ], className="graph-card full-width"),
+            ], className="graphs-row", style={"marginTop": "18px"}),
+
+            # Fila 3: Asistencia por grada y por edad — margen superior extra
             # para que los escudos del evolutivo no se superpongan con los títulos.
             html.Div([
                 html.Div([
@@ -459,7 +527,7 @@ def create_page_content(kpis, fig1, fig2, fig3, fig4):
                 ], className="graph-card small"),
             ], className="graphs-row", style={"marginTop": "18px"}),
 
-            # Fila 3: Abonados consecutivos por jornada — margen superior extra
+            # Fila 4: Abonados consecutivos por jornada — margen superior extra
             # para que los escudos del evolutivo no se superpongan con el título.
             html.Div([
                 html.Div([
@@ -485,7 +553,7 @@ def update_page(_, temp_seleccionada):
         df_kpis = get_pre_asistencia_kpis()
         df_sector = get_pre_asistencia_sector()
         df_consecutiva = get_pre_asistencia_consecutiva()
-        df_partido = get_pre_asistencia_partido()
+        df_partido_full = get_pre_asistencia_partido()
         df_edad = get_pre_asistencia_edad()
 
         temp = temp_seleccionada or 'actual'
@@ -496,12 +564,16 @@ def update_page(_, temp_seleccionada):
             empty_fig.update_layout(
                 annotations=[{"text": "No hay datos disponibles. Ejecuta sync_data.py primero.", "showarrow": False}]
             )
-            return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
+            return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig, empty_fig)
 
-        # Filtrar todas las tablas a la temporada seleccionada
+        # Filtrar todas las tablas a la temporada seleccionada.
+        # Mantenemos `df_partido_anterior` aparte para calcular comparativas
+        # de los KPIs derivados de la gráfica del evolutivo.
         df_sector = df_sector[df_sector['temporada'] == temp]
         df_consecutiva = df_consecutiva[df_consecutiva['temporada'] == temp]
-        df_partido = df_partido[df_partido['temporada'] == temp]
+        df_partido = df_partido_full[df_partido_full['temporada'] == temp]
+        df_partido_anterior = (df_partido_full[df_partido_full['temporada'] == 'anterior']
+                                if not es_anterior else pd.DataFrame())
         df_edad = df_edad[df_edad['temporada'] == temp]
 
         # =====================================================================
@@ -515,7 +587,7 @@ def update_page(_, temp_seleccionada):
                 annotations=[{"text": f"Sin datos KPI para temporada {('24/25' if es_anterior else '25/26')}",
                               "showarrow": False}]
             )
-            return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
+            return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig, empty_fig)
         kpi_actual = kpi_sel.iloc[0]
         # Cuando se muestra temp anterior, no hay comparativa: usamos zeros como anterior
         if es_anterior or kpi_otra.empty:
@@ -528,6 +600,35 @@ def update_page(_, temp_seleccionada):
             })
         else:
             kpi_anterior = kpi_otra.iloc[0]
+
+        # =====================================================================
+        # PROMEDIOS POR PARTIDO — calculados desde df_partido para garantizar
+        # que coincidan exactamente con los valores que se muestran en las
+        # gráficas "Evolutivo de Asistencia ABANCA - Riazor" y "Espectadores
+        # por Partido". El usuario que sume manualmente los valores y divida
+        # entre N partidos obtiene EXACTAMENTE el valor del KPI.
+        # =====================================================================
+        n_partidos_actual = len(df_partido)
+        promedio_asistentes_actual = (df_partido['abonados_asistentes'].mean()
+                                       if n_partidos_actual > 0 else 0)
+        promedio_espectadores_actual = (df_partido['total_espectadores'].mean()
+                                          if n_partidos_actual > 0 else 0)
+
+        n_partidos_ant = len(df_partido_anterior)
+        promedio_asistentes_ant = (df_partido_anterior['abonados_asistentes'].mean()
+                                    if n_partidos_ant > 0 else 0)
+        promedio_espectadores_ant = (df_partido_anterior['total_espectadores'].mean()
+                                       if n_partidos_ant > 0 else 0)
+
+        # Pct asistencia recalculado a partir del nuevo promedio
+        # (pre_asistencia_kpis.total_abonados sigue siendo la población base)
+        total_abonados_actual = kpi_actual.get('total_abonados', 0) or 0
+        pct_actual = ((promedio_asistentes_actual / total_abonados_actual * 100)
+                       if total_abonados_actual > 0 else 0)
+
+        total_abonados_ant = kpi_anterior.get('total_abonados', 0) or 0
+        pct_ant = ((promedio_asistentes_ant / total_abonados_ant * 100)
+                    if total_abonados_ant > 0 else 0)
         
         # KPI tooltip helpers
         TT_sexo = "Distribución por género de los abonados asistentes al estadio."
@@ -555,10 +656,15 @@ def update_page(_, temp_seleccionada):
         
         comparar = not es_anterior
         kpis = html.Div([
+            create_kpi_espectadores(
+                promedio_espectadores_actual, promedio_espectadores_ant,
+                tooltip="Media de espectadores totales por partido (abonados asistentes + entradas vendidas + invitaciones). Coincide exactamente con el promedio de la serie azul del evolutivo y de la gráfica 'Espectadores por Partido'.",
+                comparar=comparar,
+            ),
             create_kpi_abonados(
-                kpi_actual['promedio_asistentes'], kpi_actual['pct_asistencia'],
-                kpi_anterior['promedio_asistentes'], kpi_anterior['pct_asistencia'],
-                tooltip="Media de abonados que accedieron al estadio por partido (registro de tornos). Se excluyen abonos 'SIN ASIENTO', 'CERO' y 'AREA 1906'. El % se calcula sobre el total de abonados.",
+                promedio_asistentes_actual, pct_actual,
+                promedio_asistentes_ant, pct_ant,
+                tooltip="Media de abonados que accedieron al estadio por partido (registro de tornos). Se excluyen abonos 'SIN ASIENTO', 'CERO' y 'AREA 1906'. Coincide con el promedio de la serie roja del evolutivo. El % se calcula sobre el total de abonados.",
                 comparar=comparar,
             ),
             df_sexo_kpi,
@@ -703,9 +809,49 @@ def update_page(_, temp_seleccionada):
             xaxis=dict(tickfont=dict(size=10, family='Montserrat', weight='bold')),
             yaxis=dict(visible=False, range=[0, max_y_edad])
         )
-        
-        return create_page_content(kpis, fig1, fig2, fig3, fig4)
-        
+
+        # =====================================================================
+        # GRÁFICA 5: Espectadores por Partido (barras con escudos en X).
+        # Comparte el orden y los escudos del evolutivo. La columna mostrada
+        # (`total_espectadores`) coincide con la serie azul del evolutivo y
+        # su promedio aritmético simple es exactamente el KPI homónimo.
+        # =====================================================================
+        datos_g5 = df_partido.sort_values('schedule')
+        rivales_g5 = datos_g5['t2_name'].tolist()
+        results_g5 = datos_g5['result'].tolist()
+        espectadores_vals = datos_g5['total_espectadores'].tolist()
+
+        fig5 = go.Figure()
+        fig5.add_trace(go.Bar(
+            x=list(range(len(rivales_g5))),
+            y=espectadores_vals,
+            marker_color='#3498db',
+            text=[format_with_dots(v) for v in espectadores_vals],
+            textposition='outside',
+            textfont=dict(color='#333', size=10, family='Montserrat', weight='bold'),
+            hovertemplate='<b>Espectadores: %{y:,.0f}</b><extra></extra>',
+        ))
+
+        escudos_g5, result_shapes_g5 = create_escudos_with_result(rivales_g5, results_g5)
+        max_y_g5 = max(espectadores_vals) * 1.15 if espectadores_vals else 100
+
+        fig5.update_layout(
+            height=410,
+            margin=dict(b=70, t=20, l=40, r=20),
+            images=escudos_g5,
+            shapes=result_shapes_g5,
+            xaxis=dict(
+                tickmode='array',
+                tickvals=list(range(len(rivales_g5))),
+                ticktext=['' for _ in rivales_g5],
+                showticklabels=False,
+                range=[-0.5, len(rivales_g5) - 0.5] if rivales_g5 else [0, 1]
+            ),
+            yaxis=dict(showticklabels=False, range=[0, max_y_g5])
+        )
+
+        return create_page_content(kpis, fig1, fig2, fig3, fig4, fig5)
+
     except Exception as e:
         print(f"Error en asistencia: {e}")
         import traceback
@@ -714,4 +860,4 @@ def update_page(_, temp_seleccionada):
         empty_fig.update_layout(
             annotations=[{"text": f"Error: {str(e)}", "showarrow": False}]
         )
-        return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
+        return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig, empty_fig)

@@ -365,16 +365,27 @@ def update_graphs(_, temp_seleccionada):
         )
         return create_page_content([], empty_fig, empty_fig, empty_fig, empty_fig)
 
+    # Cargamos también pre_cesiones_recaudacion (saldo SOLO de cesiones vendidas:
+    # SUM(saldo_mercado_secundario) WHERE estado='V'). Es la única fuente fiable
+    # para "Recaudación Total" — `pre_cesiones_partido.saldo_total` incluiría
+    # el saldo de cesiones disponibles y bloqueadas, lo que infla el total.
+    df_rec = get_pre_cesiones_recaudacion()
+    df_rec['schedule'] = pd.to_datetime(df_rec['schedule'], errors='coerce')
+    df_rec_actual = df_rec[df_rec['temporada'] == temp].sort_values('schedule')
+    df_rec_anterior = (df_rec[df_rec['temporada'] == 'anterior']
+                       if not es_anterior else pd.DataFrame())
+
     # KPIs (sin comparativa cuando es_anterior)
     total_cesiones = df_partido['total_cesiones'].sum()
     total_vendidas = df_partido['vendidas'].sum()
-    total_saldo = df_partido['saldo_total'].sum()
-    rec_media = (total_saldo / total_vendidas) if total_vendidas > 0 else 0
+    total_recaudacion = df_rec_actual['rec_ces_vend'].sum()  # solo vendidas
+    rec_media = (total_recaudacion / total_vendidas) if total_vendidas > 0 else 0
 
     total_cesiones_ant = df_partido_ant['total_cesiones'].sum() if not df_partido_ant.empty else 0
     total_vendidas_ant = df_partido_ant['vendidas'].sum() if not df_partido_ant.empty else 0
-    total_saldo_ant = df_partido_ant['saldo_total'].sum() if not df_partido_ant.empty else 0
-    rec_media_ant = (total_saldo_ant / total_vendidas_ant) if total_vendidas_ant > 0 else 0
+    total_recaudacion_ant = (df_rec_anterior['rec_ces_vend'].sum()
+                              if not df_rec_anterior.empty else 0)
+    rec_media_ant = (total_recaudacion_ant / total_vendidas_ant) if total_vendidas_ant > 0 else 0
 
     comparar = not es_anterior
     kpis = html.Div([
@@ -387,8 +398,8 @@ def update_graphs(_, temp_seleccionada):
         create_kpi_card(rec_media, rec_media_ant, "Recaudación Media por Cesión", "euros",
                         tooltip="Importe medio obtenido por cada cesión vendida. Cálculo: Recaudación Total ÷ Cesiones Vendidas.",
                         comparar=comparar),
-        create_kpi_card(total_saldo, total_saldo_ant, "Recaudación Total", "euros",
-                        tooltip="Suma total de ingresos por venta de cesiones en todos los partidos.",
+        create_kpi_card(total_recaudacion, total_recaudacion_ant, "Recaudación Total", "euros",
+                        tooltip="Suma total de ingresos por venta de cesiones (solo cesiones efectivamente vendidas) en todos los partidos.",
                         comparar=comparar),
     ], className="kpis-row")
 
@@ -553,11 +564,9 @@ def update_graphs(_, temp_seleccionada):
         yaxis=dict(showticklabels=False, range=[0, max_y_hora])
     )
     
-    # Gráfica Recaudación: Recaudación por cesiones por partido (con escudos)
-    df_rec = get_pre_cesiones_recaudacion()
-    df_rec['schedule'] = pd.to_datetime(df_rec['schedule'], errors='coerce')
-    df_rec_actual = df_rec[df_rec['temporada'] == temp].sort_values('schedule')
-    
+    # Gráfica Recaudación: Recaudación por cesiones por partido (con escudos).
+    # Reutiliza df_rec_actual ya cargado al inicio del callback (misma fuente
+    # que el KPI "Recaudación Total" para garantizar consistencia visual).
     match_ids_rec = df_rec_actual['id_partido'].tolist()
     hover_rec = build_sector_hover(match_ids_rec, 'recaudacion', is_euros=True)
     

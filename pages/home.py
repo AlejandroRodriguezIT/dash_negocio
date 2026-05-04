@@ -10,6 +10,7 @@ from database import (
     get_pre_entradas_partido, get_pre_hosteleria_partido,
     get_pre_deportiendas_kpis, get_museo_kpis,
     get_ficha_rivales_temp_actual,
+    get_pre_cesiones_recaudacion,
 )
 from components import build_escudos_nav
 
@@ -51,15 +52,30 @@ def create_recaudacion_card(title, value_str, color="#18395c", is_active=True, h
 
 
 def _load_home_data():
-    """Carga datos para las tarjetas de inicio."""
+    """Carga datos para las tarjetas de inicio.
+
+    `rec_estadio` agrupa la recaudación de la temporada actual de:
+        - Entradas (`pre_entradas_partido.recaudacion`).
+        - Cesiones vendidas (`pre_cesiones_recaudacion.rec_ces_vend`,
+          que ya filtra por estado='V').
+    De esta forma la tarjeta refleja el total de ingresos del estadio
+    (entradas + mercado secundario), no solo entradas.
+    """
     try:
         df_ent = get_pre_entradas_partido()
-        if not df_ent.empty:
-            rec_estadio = df_ent[df_ent['temporada'] == 'actual']['recaudacion'].sum()
-        else:
-            rec_estadio = 0
+        rec_entradas = (df_ent[df_ent['temporada'] == 'actual']['recaudacion'].sum()
+                        if not df_ent.empty else 0)
     except Exception:
-        rec_estadio = 0
+        rec_entradas = 0
+
+    try:
+        df_ces = get_pre_cesiones_recaudacion()
+        rec_cesiones = (df_ces[df_ces['temporada'] == 'actual']['rec_ces_vend'].sum()
+                        if not df_ces.empty else 0)
+    except Exception:
+        rec_cesiones = 0
+
+    rec_estadio = rec_entradas + rec_cesiones
 
     try:
         df_host = get_pre_hosteleria_partido()
