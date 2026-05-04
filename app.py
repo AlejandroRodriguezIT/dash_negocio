@@ -48,12 +48,7 @@ SECCIONES = {
                      "href": "/deportiendas", "id": "nav-deportiendas"},
     "hosteleria":   {"permiso": 4, "label": "DÉPOR HOSTELERIA",
                      "icon": "/assets/Indice/Depor_Hosteleria.png",
-                     "href": "/hosteleria", "id": "nav-hosteleria",
-                     "subitems": [
-                         {"label": "MatchDay", "href": "/hosteleria"},
-                         {"label": "Cuenta de Explotación",
-                          "href": "/hosteleria/cuenta-explotacion"},
-                     ]},
+                     "href": "/hosteleria", "id": "nav-hosteleria"},
 }
 
 

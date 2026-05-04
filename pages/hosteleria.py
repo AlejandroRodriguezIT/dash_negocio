@@ -446,11 +446,32 @@ def build_fig_recaudacion(df_actual):
     escudos_images, result_shapes = create_escudos_with_result(rivales, results)
     max_y = df_actual['recaudacion_total'].max() * 1.15 if len(df_actual) > 0 else 100
 
+    # Anotación bajo el escudo del Leganés: la facturación de ese partido es
+    # significativamente mayor por ser el día designado como "Día de peñas".
+    # Añadimos la nota en cursiva justo debajo del escudo para que el usuario
+    # entienda el motivo del pico, sin tener que documentarlo aparte.
+    leganes_aliases = {'Leganés', 'CD Leganés', 'Leganes', 'CD Leganes'}
+    annotations_extra = []
+    for i, r in enumerate(rivales):
+        if r in leganes_aliases:
+            annotations_extra.append(dict(
+                x=i, y=-0.22,
+                xref='x', yref='paper',
+                text='<i>Día de peñas</i>',
+                showarrow=False,
+                font=dict(size=10, color='#666', family='Montserrat'),
+                xanchor='center', yanchor='top',
+            ))
+            break
+
     fig.update_layout(
-        margin=dict(b=50, t=5, l=20, r=20),
+        # Margen inferior ampliado a 75px para acomodar la anotación
+        # "Día de peñas" sin que pise el escudo del Leganés.
+        margin=dict(b=75, t=5, l=20, r=20),
         height=350,
         images=escudos_images,
         shapes=result_shapes,
+        annotations=annotations_extra,
         xaxis=dict(
             tickmode='array',
             tickvals=list(range(len(rivales))),
