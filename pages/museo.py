@@ -155,99 +155,117 @@ layout = html.Div([
 # =============================================================================
 
 def build_fig_evolucion_diaria(df_diario, df_partidos):
-    """Líneas de ingresos y entradas diarios con escudos de rivales en días de partido."""
+    """Línea de ingresos diarios con líneas verticales y escudos en días de partido.
+
+    El eje X es **categórico** (`type='category'`), de modo que cada día con
+    datos ocupa el mismo ancho horizontal en la gráfica, independientemente de
+    los saltos temporales (días cerrados, vacaciones, etc.). Esto garantiza
+    que los escudos y las líneas verticales de día de partido aparezcan
+    siempre alineados con su día correspondiente y que la densidad visual sea
+    uniforme a lo largo del eje.
+    """
     df = df_diario.copy()
     df['fecha'] = pd.to_datetime(df['fecha'])
     daily = df.groupby('fecha').agg(
         ingresos=('ingresos_netos', 'sum'),
-        entradas=('num_entradas', 'sum'),
-    ).reset_index().sort_values('fecha')
+    ).reset_index().sort_values('fecha').reset_index(drop=True)
+
+    # Categorías del eje X: string ISO 'YYYY-MM-DD' (orden lexicográfico = orden cronológico).
+    daily['fecha_cat']  = daily['fecha'].dt.strftime('%Y-%m-%d')
+    daily['fecha_disp'] = daily['fecha'].dt.strftime('%d/%m')
+    daily['fecha_full'] = daily['fecha'].dt.strftime('%d/%m/%Y')
 
     max_y1 = daily['ingresos'].max() * 1.35 if not daily.empty else 100
-    max_y2 = daily['entradas'].max() * 1.25 if not daily.empty else 100
 
     fig = go.Figure()
 
-    # Línea ingresos
+    # Línea ingresos (única serie de la gráfica)
     fig.add_trace(go.Scatter(
-        x=daily['fecha'], y=daily['ingresos'],
+        x=daily['fecha_cat'], y=daily['ingresos'],
         mode='lines+markers',
         name='Ingresos (€)',
         line=dict(color=PRIMARY, width=2.5),
         marker=dict(size=4),
         text=[fmt_eur(v) for v in daily['ingresos']],
-        hovertemplate='<b>%{x|%d/%m/%Y}</b><br>Ingresos: %{text}<extra></extra>',
-        yaxis='y',
+        customdata=daily['fecha_full'],
+        hovertemplate='<b>%{customdata}</b><br>Ingresos: %{text}<extra></extra>',
     ))
 
-    # Línea entradas
-    fig.add_trace(go.Scatter(
-        x=daily['fecha'], y=daily['entradas'],
-        mode='lines+markers',
-        name='Entradas',
-        line=dict(color=SECONDARY, width=2, dash='dot'),
-        marker=dict(size=4),
-        text=[fmt(v) for v in daily['entradas']],
-        hovertemplate='<b>%{x|%d/%m/%Y}</b><br>Entradas: %{text}<extra></extra>',
-        yaxis='y2',
-    ))
-
-    # Escudos de rivales en días de partido
+    # Líneas verticales discontinuas y escudos en los días de partido.
+    # Con eje categórico, las vlines deben implementarse como shapes (no add_vline,
+    # que requiere ejes numéricos/temporales). El xref='x' espera la categoría
+    # exacta (ISO 'YYYY-MM-DD') para alinearse con el día correcto.
     images = []
     shapes = []
     annotations = []
     if not df_partidos.empty:
         df_p = df_partidos.copy()
         df_p['fecha'] = pd.to_datetime(df_p['fecha'])
+        df_p['fecha_cat'] = df_p['fecha'].dt.strftime('%Y-%m-%d')
+        cat_set = set(daily['fecha_cat'])
         for _, row in df_p.iterrows():
-            # Línea vertical
-            fig.add_vline(
-                x=row['fecha'].timestamp() * 1000,
+            x_cat = row['fecha_cat']
+            if x_cat not in cat_set:
+                # El día del partido no tiene fila en df_diario (Museo cerrado);
+                # saltamos para evitar romper el alineamiento del eje categórico.
+                continue
+            # Línea vertical de día de partido (shape, no add_vline)
+            shapes.append(dict(
+                type='line',
+                xref='x', yref='paper',
+                x0=x_cat, x1=x_cat,
+                y0=0, y1=1,
                 line=dict(color=ACCENT, width=1.5, dash='dash'),
                 opacity=0.6,
-            )
-            # Escudo del rival
+                layer='below',
+            ))
+            # Escudo del rival sobre la línea
             escudo_path = get_escudo_path(row['rival'])
             if escudo_path:
                 images.append(dict(
                     source=escudo_path,
                     xref='x', yref='y',
-                    x=row['fecha'],
+                    x=x_cat,
                     y=max_y1 * 0.98,
-                    sizex=1.5 * 86400000,
+                    sizex=6,  # ~6 categorías de ancho con eje categórico
                     sizey=max_y1 * 0.18,
                     xanchor='center', yanchor='top',
                     layer='above',
                 ))
             else:
-                # Si no hay escudo, mostrar texto
                 annotations.append(dict(
-                    x=row['fecha'], y=max_y1 * 0.99,
+                    x=x_cat, y=max_y1 * 0.99,
                     text=f"<b>{row['rival']}</b>",
                     showarrow=False,
                     font=dict(size=8, family=FONT, color=ACCENT),
                     textangle=-45, yref='y',
                 ))
 
+    # Mostrar solo ~15 ticks repartidos a lo largo del eje para no saturar
+    # cuando hay muchos días de datos (Sep–May ≈ 240 categorías).
+    n_dates = len(daily)
+    step = max(1, n_dates // 15) if n_dates > 30 else 1
+    tickvals = daily['fecha_cat'].iloc[::step].tolist()
+    ticktext = daily['fecha_disp'].iloc[::step].tolist()
+
     fig.update_layout(
         height=420,
-        margin=dict(t=30, b=30, l=50, r=50),
+        margin=dict(t=30, b=40, l=50, r=20),
         images=images,
         shapes=shapes,
         annotations=annotations,
-        xaxis=dict(tickfont=dict(size=9, family=FONT), tickformat='%d/%m'),
+        xaxis=dict(
+            type='category',
+            tickfont=dict(size=9, family=FONT),
+            tickvals=tickvals,
+            ticktext=ticktext,
+            tickangle=-45,
+        ),
         yaxis=dict(
             title=dict(text='Ingresos (€)', font=dict(size=10, family=FONT, color=PRIMARY)),
             tickfont=dict(size=9, family=FONT, color=PRIMARY),
             range=[0, max_y1],
             showgrid=True, gridcolor='rgba(0,0,0,0.05)',
-        ),
-        yaxis2=dict(
-            title=dict(text='Entradas', font=dict(size=10, family=FONT, color=SECONDARY)),
-            tickfont=dict(size=9, family=FONT, color=SECONDARY),
-            overlaying='y', side='right',
-            range=[0, max_y2],
-            showgrid=False,
         ),
         showlegend=False,
         plot_bgcolor='white',
@@ -481,15 +499,13 @@ def update_page(_):
                               tooltip="Media de entradas por cada pedido completado."),
         ], className="kpis-row")
 
-        # --- Leyenda evolución diaria ---
+        # --- Leyenda evolución diaria (solo Ingresos + Día de partido tras
+        # eliminar la serie de Entradas para que la gráfica se enfoque en
+        # facturación del museo y los hitos de jornada). ---
         legend_evolucion = html.Div([
             html.Div(style={"width": "14px", "height": "3px", "backgroundColor": PRIMARY,
                             "borderRadius": "2px", "display": "inline-block", "marginRight": "5px"}),
             html.Span("Ingresos (€)", style={"marginRight": "18px", "fontSize": "11px", "fontFamily": FONT}),
-            html.Div(style={"width": "14px", "height": "3px", "backgroundColor": SECONDARY,
-                            "borderRadius": "2px", "display": "inline-block", "marginRight": "5px",
-                            "borderTop": f"2px dashed {SECONDARY}"}),
-            html.Span("Entradas", style={"marginRight": "18px", "fontSize": "11px", "fontFamily": FONT}),
             html.Div(style={"width": "14px", "height": "3px", "backgroundColor": ACCENT,
                             "borderRadius": "2px", "display": "inline-block", "marginRight": "5px",
                             "borderTop": f"2px dashed {ACCENT}"}),
